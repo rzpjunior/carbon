@@ -14,16 +14,20 @@ class KubernetesManager:
         except Exception as e:
             raise Exception(f"Failed to load kubeconfig: {str(e)}")
 
-    def get_resources(self):
+    def get_resource(self, resource_type):
         try:
-            resources = {
-                "pods": self.list_pods(),
-                "namespaces": self.list_namespaces(),
-                "deployments": self.list_deployments(),
-                "services": self.list_services(),
-                "ingresses": self.list_ingresses(),
-            }
-            return resources
+            if resource_type == "pods":
+                return self.list_pods()
+            elif resource_type == "namespaces":
+                return self.list_namespaces()
+            elif resource_type == "deployments":
+                return self.list_deployments()
+            elif resource_type == "services":
+                return self.list_services()
+            elif resource_type == "ingresses":
+                return self.list_ingresses()
+            else:
+                raise Exception("Unsupported resource type")
         except ApiException as e:
             raise Exception(f"API Error: {e.reason}")
 

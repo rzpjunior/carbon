@@ -16,12 +16,12 @@ def build_deployment_table(resources):
     for resource in resources:
         conditions_attr = 'running' if 'Available' in resource['conditions'] else 'pending'
         row = [
-            urwid.Text(resource['name']),
-            urwid.Text(resource['namespace']),
-            urwid.Text(resource['pods']),
-            urwid.Text(str(resource['replicas'])),
-            urwid.Text(resource['age']),
-            urwid.AttrMap(urwid.Text(resource['conditions']), conditions_attr)
+            urwid.Text(resource['name'], align='center'),
+            urwid.Text(resource['namespace'], align='center'),
+            urwid.Text(resource['pods'], align='center'),
+            urwid.Text(str(resource['replicas']), align='center'),
+            urwid.Text(resource['age'], align='center'),
+            urwid.AttrMap(urwid.Text(resource['conditions'], align='center'), conditions_attr)
         ]
         table_row = urwid.AttrMap(urwid.Columns([
             ('weight', 2, row[0]),

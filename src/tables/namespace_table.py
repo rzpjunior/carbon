@@ -7,7 +7,7 @@ def build_namespace_table(resources):
 
     table_rows = [urwid.LineBox(table_header), urwid.Divider()]
     for resource in resources:
-        row = [urwid.Text(resource['name'])]
+        row = [urwid.Text(resource['name'], align='center')]
         table_row = urwid.AttrMap(urwid.Columns([('weight', 1, row[0])], dividechars=1), 'line')
         table_rows.append(urwid.LineBox(table_row))
 

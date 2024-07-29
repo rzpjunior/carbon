@@ -91,7 +91,7 @@ class CarbonUI:
 
     def resource_selection_screen(self):
         self.sidebar = self.build_sidebar()
-        self.body = urwid.Text("Please select a resource from the sidebar.")
+        self.body = urwid.Text(".")
         self.columns = urwid.Columns([('fixed', 20, self.sidebar), urwid.Filler(self.body)])
         self.frame.body = self.columns
 

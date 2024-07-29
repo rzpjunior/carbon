@@ -15,11 +15,11 @@ def build_pod_table(resources):
     for resource in resources:
         status_attr = 'running' if resource['status'] == 'Running' else 'pending' if resource['status'] == 'Pending' else 'failed'
         row = [
-            urwid.Text(resource['name']),
-            urwid.Text(resource['namespace']),
-            urwid.AttrMap(urwid.Text(resource['status']), status_attr),
-            urwid.Text(str(resource['restarts'])),
-            urwid.Text(resource['age'])
+            urwid.Text(resource['name'], align='center'),
+            urwid.Text(resource['namespace'], align='center'),
+            urwid.AttrMap(urwid.Text(resource['status'], align='center'), status_attr),
+            urwid.Text(str(resource['restarts']), align='center'),
+            urwid.Text(resource['age'], align='center')
         ]
         table_row = urwid.AttrMap(urwid.Columns([
             ('weight', 2, row[0]), 

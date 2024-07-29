@@ -5,17 +5,20 @@ from src.utils.config_loader import load_config
 class CarbonUI:
     def __init__(self):
         self.manager = KubernetesManager()
-        self.main_menu = self.build_main_menu()
-        self.loop = urwid.MainLoop(self.main_menu, unhandled_input=self.handle_input)
+        self.header = urwid.Text("Carbon - Kubernetes IDE", align='center')
+        self.body = urwid.Text("Please select a provider to get started.")
+        self.frame = urwid.Frame(header=self.header, body=self.body, footer=None)
+        self.loop = urwid.MainLoop(self.frame, unhandled_input=self.handle_input)
 
-    def build_main_menu(self):
+    def load_main_menu(self):
         body = [
             urwid.Text("Choose your provider:"),
             urwid.Divider(),
             urwid.Button("DigitalOcean", self.choose_provider, 'digitalocean'),
             urwid.Button("AWS", self.choose_provider, 'aws'),
         ]
-        return urwid.ListBox(urwid.SimpleFocusListWalker(body))
+        self.body = urwid.ListBox(urwid.SimpleFocusListWalker(body))
+        self.update_frame()
 
     def choose_provider(self, button, provider):
         self.manager.set_provider(provider)
@@ -28,10 +31,11 @@ class CarbonUI:
             urwid.Edit(caption="Path: ", edit_text=""),
             urwid.Button("Load", self.load_config),
         ]
-        self.loop.widget = urwid.ListBox(urwid.SimpleFocusListWalker(body))
+        self.body = urwid.ListBox(urwid.SimpleFocusListWalker(body))
+        self.update_frame()
 
     def load_config(self, button):
-        edit_widget = self.loop.widget.body[2]
+        edit_widget = self.body.body[2]
         config_path = edit_widget.get_edit_text()
         try:
             config = load_config(config_path)
@@ -39,21 +43,28 @@ class CarbonUI:
             self.resource_selection_screen()
         except Exception as e:
             error_text = urwid.Text(('error', f"Error loading configuration: {str(e)}"))
-            self.loop.widget.body.insert(3, error_text)
+            self.body.body.insert(3, error_text)
             self.loop.draw_screen()
 
-    def resource_selection_screen(self, button=None):
+    def build_sidebar(self):
         body = [
-            urwid.Text("Select the resource type you want to view:"),
+            urwid.Text("Resources:"),
             urwid.Divider(),
             urwid.Button("Pods", self.show_resources, 'pods'),
             urwid.Button("Namespaces", self.show_resources, 'namespaces'),
             urwid.Button("Deployments", self.show_resources, 'deployments'),
             urwid.Button("Services", self.show_resources, 'services'),
             urwid.Button("Ingresses", self.show_resources, 'ingresses'),
-            urwid.Button("Back", self.back_to_main),
+            urwid.Divider(),
+            urwid.Button("Back to Main Menu", self.back_to_main),
         ]
-        self.loop.widget = urwid.ListBox(urwid.SimpleFocusListWalker(body))
+        return urwid.LineBox(urwid.ListBox(urwid.SimpleFocusListWalker(body)), title="Menu")
+
+    def resource_selection_screen(self):
+        self.sidebar = self.build_sidebar()
+        self.body = urwid.Text("Please select a resource from the sidebar.")
+        self.columns = urwid.Columns([('fixed', 20, self.sidebar), self.body])
+        self.frame.body = self.columns
 
     def show_resources(self, button, resource_type):
         try:
@@ -64,19 +75,26 @@ class CarbonUI:
             ]
             for item in resources:
                 body.append(urwid.Text(f" - {item}"))
-            body.append(urwid.Button("Back", self.resource_selection_screen))
-            self.loop.widget = urwid.ListBox(urwid.SimpleFocusListWalker(body))
+            self.body = urwid.ListBox(urwid.SimpleFocusListWalker(body))
+            self.update_frame()
         except Exception as e:
             error_text = urwid.Text(('error', f"Error fetching {resource_type}: {str(e)}"))
-            self.loop.widget.body.insert(3, error_text)
+            self.body.body.insert(3, error_text)
             self.loop.draw_screen()
 
     def back_to_main(self, button):
-        self.loop.widget = self.main_menu
+        self.load_main_menu()
 
     def handle_input(self, key):
         if key in ('q', 'Q'):
             raise urwid.ExitMainLoop()
 
+    def update_frame(self):
+        if hasattr(self, 'columns'):
+            self.columns.contents[1] = (self.body, self.columns.options())
+        else:
+            self.frame.body = self.body
+
     def run(self):
+        self.load_main_menu()
         self.loop.run()

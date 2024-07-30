@@ -1,6 +1,6 @@
 import urwid
 
-def build_service_table(services):
+def build_service_table(services, edit_callback):
     headers = ['Name', 'Namespace', 'Type', 'Cluster IP', 'Ports', 'External IP', 'Selector', 'Age', 'Status']
     table_header = [urwid.Text(header, align='center') for header in headers]
     table_header = urwid.AttrMap(urwid.Columns([
@@ -18,7 +18,7 @@ def build_service_table(services):
     for service in services:
         status_attr = 'running' if service['status'] == 'Active' else 'pending' if service['status'] == 'Pending' else 'failed'
         row = [
-            urwid.Text(service['name'], align='center'),
+            urwid.AttrMap(urwid.Button(service['name'], on_press=edit_callback, user_data=service), None, focus_map='reversed'),
             urwid.Text(service['namespace'], align='center'),
             urwid.Text(service['type'], align='center'),
             urwid.Text(service['cluster_ip'], align='center'),

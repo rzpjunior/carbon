@@ -1,6 +1,6 @@
+import yaml
 from kubernetes import client
 from datetime import datetime
-import yaml
 
 class Network:
     def __init__(self):
@@ -54,3 +54,14 @@ class Network:
         yaml_dict['kind'] = yaml_dict.pop('kind', None)
         ingress_body = client.V1Ingress(**yaml_dict)
         self.networking_v1.replace_namespaced_ingress(name, namespace, body=ingress_body)
+
+    def get_service_yaml(self, namespace, name):
+        service = self.v1.read_namespaced_service(name, namespace, _preload_content=False)
+        return service.data.decode('utf-8')
+
+    def update_service_yaml(self, namespace, name, yaml_content):
+        yaml_dict = yaml.safe_load(yaml_content)
+        yaml_dict['api_version'] = yaml_dict.pop('apiVersion', None)
+        yaml_dict['kind'] = yaml_dict.pop('kind', None)
+        service_body = client.V1Service(**yaml_dict)
+        self.v1.replace_namespaced_service(name, namespace, body=service_body)

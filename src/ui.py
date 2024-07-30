@@ -1,4 +1,6 @@
 import urwid
+import yaml
+
 from src.kubernetes.workloads import Workloads
 from src.kubernetes.network import Network
 from src.kubernetes.namespace import Namespace
@@ -127,7 +129,7 @@ class CarbonUI:
                 self.body = build_deployment_table(resources)
             elif resource_type == 'services':
                 resources = self.network.list_services()
-                self.body = build_service_table(resources)
+                self.body = build_service_table(resources, self.edit_service)
             elif resource_type == 'ingresses':
                 resources = self.network.list_ingresses()
                 self.body = build_ingress_table(resources, self.edit_ingress)
@@ -145,7 +147,8 @@ class CarbonUI:
         namespace = pod['namespace']
         name = pod['name']
         yaml_content = self.workloads.get_pod_yaml(namespace, name)
-        edit_widget = urwid.Edit(edit_text=yaml_content)
+        formatted_yaml = yaml.safe_dump(yaml.safe_load(yaml_content), default_flow_style=False)
+        edit_widget = urwid.Edit(edit_text=formatted_yaml)
         body = urwid.ListBox(urwid.SimpleFocusListWalker([
             urwid.Text(f"Editing {namespace}/{name}"),
             urwid.Divider(),
@@ -167,7 +170,8 @@ class CarbonUI:
         namespace = ingress['namespace']
         name = ingress['name']
         yaml_content = self.network.get_ingress_yaml(namespace, name)
-        edit_widget = urwid.Edit(edit_text=yaml_content)
+        formatted_yaml = yaml.safe_dump(yaml.safe_load(yaml_content), default_flow_style=False)
+        edit_widget = urwid.Edit(edit_text=formatted_yaml)
         body = urwid.ListBox(urwid.SimpleFocusListWalker([
             urwid.Text(f"Editing {namespace}/{name}"),
             urwid.Divider(),
@@ -189,6 +193,29 @@ class CarbonUI:
             error_text = urwid.Text(('failed', f"Error saving ingress: {str(e)}"))
             self.frame.body.body.insert(4, error_text)
             self.loop.draw_screen()
+
+    def edit_service(self, button, service):
+        namespace = service['namespace']
+        name = service['name']
+        yaml_content = self.network.get_service_yaml(namespace, name)
+        formatted_yaml = yaml.safe_dump(yaml.safe_load(yaml_content), default_flow_style=False)
+        edit_widget = urwid.Edit(edit_text=formatted_yaml)
+        body = urwid.ListBox(urwid.SimpleFocusListWalker([
+            urwid.Text(f"Editing {namespace}/{name}"),
+            urwid.Divider(),
+            edit_widget,
+            urwid.Divider(),
+            urwid.Button("Save", self.save_service, (namespace, name, edit_widget)),
+            urwid.Button("Cancel", lambda button: self.resource_selection_screen())
+        ]))
+        self.frame.body = body
+
+    def save_service(self, button, data):
+        namespace, name, edit_widget = data
+        yaml_content = edit_widget.get_edit_text()
+        self.network.update_service_yaml(namespace, name, yaml_content)
+        self.resource_selection_screen()
+        self.show_services(button) 
 
     def close_connection(self, button):
         self.workloads = None

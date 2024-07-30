@@ -14,7 +14,7 @@ def build_ingress_table(ingresses, edit_callback):
     table_rows = [urwid.LineBox(table_header), urwid.Divider()]
     for ingress in ingresses:
         row = [
-            urwid.AttrMap(urwid.Button(ingress['name'], align='center', on_press=edit_callback, user_data=ingresses), None, focus_map='reversed'),
+            urwid.AttrMap(urwid.Button(ingress['name'], align='center', on_press=edit_callback, user_data=ingress), None, focus_map='reversed'),
             urwid.Text(ingress['namespace'], align='center'),
             urwid.Text(ingress['load_balancers'], align='center'),
             urwid.Text(ingress['rules'], align='center'),

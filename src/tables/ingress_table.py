@@ -1,6 +1,6 @@
 import urwid
 
-def build_ingress_table(ingresses):
+def build_ingress_table(ingresses, edit_callback):
     headers = ['Name', 'Namespace', 'LoadBalancers', 'Rules', 'Age']
     table_header = [urwid.Text(header, align='center') for header in headers]
     table_header = urwid.AttrMap(urwid.Columns([
@@ -14,7 +14,7 @@ def build_ingress_table(ingresses):
     table_rows = [urwid.LineBox(table_header), urwid.Divider()]
     for ingress in ingresses:
         row = [
-            urwid.Text(ingress['name'], align='center'),
+            urwid.AttrMap(urwid.Button(ingress['name'], align='center', on_press=edit_callback, user_data=ingresses), None, focus_map='reversed'),
             urwid.Text(ingress['namespace'], align='center'),
             urwid.Text(ingress['load_balancers'], align='center'),
             urwid.Text(ingress['rules'], align='center'),

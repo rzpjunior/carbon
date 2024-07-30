@@ -130,7 +130,7 @@ class CarbonUI:
                 self.body = build_service_table(resources)
             elif resource_type == 'ingresses':
                 resources = self.network.list_ingresses()
-                self.body = build_ingress_table(resources)
+                self.body = build_ingress_table(resources, self.edit_ingress)
             elif resource_type == 'namespaces':
                 resources = self.namespace.list_namespaces()
                 self.body = build_namespace_table(resources)
@@ -156,13 +156,39 @@ class CarbonUI:
         ]))
         self.frame.body = body
 
-
     def save_pod(self, button, data):
         namespace, name, edit_widget = data
         yaml_content = edit_widget.get_edit_text()
         self.workloads.update_pod_yaml(namespace, name, yaml_content)
         self.resource_selection_screen()
         self.show_pods(button)
+
+    def edit_ingress(self, button, ingress):
+        namespace = ingress['namespace']
+        name = ingress['name']
+        yaml_content = self.network.get_ingress_yaml(namespace, name)
+        edit_widget = urwid.Edit(edit_text=yaml_content)
+        body = urwid.ListBox(urwid.SimpleFocusListWalker([
+            urwid.Text(f"Editing {namespace}/{name}"),
+            urwid.Divider(),
+            edit_widget,
+            urwid.Divider(),
+            urwid.Button("Save", self.save_ingress, (namespace, name, edit_widget)),
+            urwid.Button("Cancel", lambda button: self.resource_selection_screen())
+        ]))
+        self.frame.body = body
+
+    def save_ingress(self, button, data):
+        namespace, name, edit_widget = data
+        yaml_content = edit_widget.get_edit_text()
+        try:
+            self.network.update_ingress_yaml(namespace, name, yaml_content)
+            self.resource_selection_screen(None)
+            self.show_ingresses(button)
+        except Exception as e:
+            error_text = urwid.Text(('failed', f"Error saving ingress: {str(e)}"))
+            self.frame.body.body.insert(4, error_text)
+            self.loop.draw_screen()
 
     def close_connection(self, button):
         self.workloads = None

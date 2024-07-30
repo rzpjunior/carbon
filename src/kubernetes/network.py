@@ -1,5 +1,6 @@
 from kubernetes import client
 from datetime import datetime
+import yaml
 
 class Network:
     def __init__(self):
@@ -42,3 +43,14 @@ class Network:
                 'age': f"{age}d"
             })
         return ingress_details
+    
+    def get_ingress_yaml(self, namespace, name):
+        ingress = self.networking_v1.read_namespaced_ingress(name, namespace, _preload_content=False)
+        return ingress.data.decode('utf-8')
+
+    def update_ingress_yaml(self, namespace, name, yaml_content):
+        yaml_dict = yaml.safe_load(yaml_content)
+        yaml_dict['api_version'] = yaml_dict.pop('apiVersion', None)
+        yaml_dict['kind'] = yaml_dict.pop('kind', None)
+        ingress_body = client.V1Ingress(**yaml_dict)
+        self.networking_v1.replace_namespaced_ingress(name, namespace, body=ingress_body)

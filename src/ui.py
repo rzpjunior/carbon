@@ -17,7 +17,7 @@ class CarbonUI:
         self.header = urwid.AttrMap(urwid.Text("Carbon - Kubernetes IDE", align='center'), 'header')
         self.body = urwid.Text("Please select a provider to get started.")
         self.terminal = TerminalWidget()
-        self.frame = urwid.Frame(header=self.header, body=self.body, footer=self.terminal)
+        self.frame = urwid.Frame(header=self.header, body=self.body, footer=None)  # Initially, no footer (no terminal)
         self.loop = urwid.MainLoop(self.frame, unhandled_input=self.handle_input, palette=[
             ('header', 'black', 'light gray', 'standout'),
             ('reversed', 'standout', ''),
@@ -38,6 +38,7 @@ class CarbonUI:
         ]
         self.body = urwid.ListBox(urwid.SimpleFocusListWalker(body))
         self.frame.body = self.body
+        self.frame.footer = None  # Hide terminal
 
     def choose_provider(self, button, provider):
         self.provider = provider
@@ -52,6 +53,7 @@ class CarbonUI:
         ]
         self.body = urwid.ListBox(urwid.SimpleFocusListWalker(body))
         self.frame.body = self.body
+        self.frame.footer = None  # Hide terminal
 
     def load_config(self, button):
         edit_widget = self.body.body[2]
@@ -63,6 +65,7 @@ class CarbonUI:
             self.network = Network()
             self.namespace = Namespace()
             self.resource_selection_screen()
+            self.frame.footer = self.terminal  # Show terminal
         except Exception as e:
             error_text = urwid.Text(('failed', f"Error loading configuration: {str(e)}"))
             self.body.body.insert(3, error_text)
@@ -85,10 +88,6 @@ class CarbonUI:
             urwid.Text("Other:"),
             urwid.Divider(),
             self.create_menu_button("Namespaces", self.show_namespaces),
-            urwid.Divider(),
-            urwid.Text("Tools:"),
-            urwid.Divider(),
-            self.create_menu_button("Terminal", self.show_terminal),
         ])
         return urwid.LineBox(menu_content, title="Menu")
 
@@ -102,10 +101,6 @@ class CarbonUI:
         self.body = urwid.Text(".")
         self.columns = urwid.Columns([('fixed', 20, self.sidebar), urwid.Filler(self.body)])
         self.frame.body = self.columns
-
-    def show_terminal(self, button):
-        # The terminal is always at the bottom, no need to switch body content
-        pass
 
     def show_pods(self, button):
         self.show_resources('pods')
@@ -225,7 +220,7 @@ class CarbonUI:
         yaml_content = edit_widget.get_edit_text()
         self.network.update_service_yaml(namespace, name, yaml_content)
         self.resource_selection_screen()
-        self.show_services(button) 
+        self.show_services(button)
 
     def edit_deployment(self, button, deployment):
         namespace = deployment['namespace']

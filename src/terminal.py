@@ -8,8 +8,10 @@ class TerminalWidget(urwid.WidgetWrap):
         self.stream = pyte.Stream()
         self.stream.attach(self.term)
         self.output = urwid.Text("", wrap='clip')
-        self.input = urwid.Edit("> ", multiline=False)
-        self.layout = urwid.Pile([self.output, self.input])
+        self.output_box = urwid.ListBox(urwid.SimpleFocusListWalker([self.output]))
+        self.output_box = urwid.BoxAdapter(self.output_box, height=15)
+        self.input = urwid.Edit("user@CARBON ~> ", multiline=False)
+        self.layout = urwid.Pile([self.output_box, ('pack', self.input)])
         self.frame = urwid.LineBox(self.layout)
         super().__init__(self.frame)
 
@@ -32,3 +34,12 @@ class TerminalWidget(urwid.WidgetWrap):
         current_text = self.output.get_text()[0]
         new_text = f"{current_text}\n{text}" if current_text else text
         self.output.set_text(new_text)
+        self.output_box.set_focus(len(self.output_box.body) - 1)
+
+    def keypress(self, size, key):
+        if key == 'enter':
+            self.handle_input('enter')
+        elif key in ('up', 'down'):
+            return self.output_box.keypress(size, key)
+        else:
+            return self.input.keypress(size, key)

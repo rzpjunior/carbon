@@ -10,12 +10,14 @@ from src.tables.deployment_table import build_deployment_table
 from src.tables.service_table import build_service_table
 from src.tables.ingress_table import build_ingress_table
 from src.tables.namespace_table import build_namespace_table
+from src.terminal import TerminalWidget
 
 class CarbonUI:
     def __init__(self):
         self.header = urwid.AttrMap(urwid.Text("Carbon - Kubernetes IDE", align='center'), 'header')
         self.body = urwid.Text("Please select a provider to get started.")
-        self.frame = urwid.Frame(header=self.header, body=self.body, footer=None)
+        self.terminal = TerminalWidget()
+        self.frame = urwid.Frame(header=self.header, body=self.body, footer=self.terminal)
         self.loop = urwid.MainLoop(self.frame, unhandled_input=self.handle_input, palette=[
             ('header', 'black', 'light gray', 'standout'),
             ('reversed', 'standout', ''),
@@ -83,6 +85,10 @@ class CarbonUI:
             urwid.Text("Other:"),
             urwid.Divider(),
             self.create_menu_button("Namespaces", self.show_namespaces),
+            urwid.Divider(),
+            urwid.Text("Tools:"),
+            urwid.Divider(),
+            self.create_menu_button("Terminal", self.show_terminal),
         ])
         return urwid.LineBox(menu_content, title="Menu")
 
@@ -96,6 +102,10 @@ class CarbonUI:
         self.body = urwid.Text(".")
         self.columns = urwid.Columns([('fixed', 20, self.sidebar), urwid.Filler(self.body)])
         self.frame.body = self.columns
+
+    def show_terminal(self, button):
+        # The terminal is always at the bottom, no need to switch body content
+        pass
 
     def show_pods(self, button):
         self.show_resources('pods')
@@ -253,6 +263,8 @@ class CarbonUI:
     def handle_input(self, key):
         if key in ('q', 'Q'):
             raise urwid.ExitMainLoop()
+        if isinstance(self.frame.footer, TerminalWidget):
+            self.frame.footer.handle_input(key)
 
     def run(self):
         self.load_main_menu()

@@ -1,3 +1,5 @@
 urwid
 kubernetes
 PyYAML
+ptyprocess
+pyte

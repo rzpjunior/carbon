@@ -18,7 +18,7 @@ def build_service_table(services, edit_callback):
     for service in services:
         status_attr = 'running' if service['status'] == 'Active' else 'pending' if service['status'] == 'Pending' else 'failed'
         row = [
-            urwid.AttrMap(urwid.Button(service['name'], on_press=edit_callback, user_data=service), None, focus_map='reversed'),
+            urwid.AttrMap(urwid.Button(service['name'], align='center', on_press=edit_callback, user_data=service), None, focus_map='reversed'),
             urwid.Text(service['namespace'], align='center'),
             urwid.Text(service['type'], align='center'),
             urwid.Text(service['cluster_ip'], align='center'),

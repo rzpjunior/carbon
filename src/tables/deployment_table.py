@@ -16,7 +16,7 @@ def build_deployment_table(resources, edit_callback):
     for resource in resources:
         conditions_attr = 'running' if 'Available' in resource['conditions'] else 'pending'
         row = [
-            urwid.AttrMap(urwid.Button(resource['name'], on_press=edit_callback, user_data=resource), None, focus_map='reversed'),
+            urwid.AttrMap(urwid.Button(resource['name'], align='center', on_press=edit_callback, user_data=resource), None, focus_map='reversed'),
             urwid.Text(resource['namespace'], align='center'),
             urwid.Text(resource['pods'], align='center'),
             urwid.Text(str(resource['replicas']), align='center'),

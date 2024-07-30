@@ -63,3 +63,14 @@ class Workloads:
             return f"{minutes}m"
         else:
             return f"{seconds}s"
+
+    def get_deployment_yaml(self, namespace, name):
+        deployment = self.apps_v1.read_namespaced_deployment(name, namespace, _preload_content=False)
+        return deployment.data.decode('utf-8')
+
+    def update_deployment_yaml(self, namespace, name, yaml_content):
+        yaml_dict = yaml.safe_load(yaml_content)
+        yaml_dict['api_version'] = yaml_dict.pop('apiVersion', None)
+        yaml_dict['kind'] = yaml_dict.pop('kind', None)
+        deployment_body = client.V1Deployment(**yaml_dict)
+        self.apps_v1.replace_namespaced_deployment(name, namespace, body=deployment_body)

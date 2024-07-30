@@ -126,7 +126,7 @@ class CarbonUI:
                 self.body = build_pod_table(resources, self.edit_pod)
             elif resource_type == 'deployments':
                 resources = self.workloads.list_deployments_detailed()
-                self.body = build_deployment_table(resources)
+                self.body = build_deployment_table(resources, self.edit_deployment)
             elif resource_type == 'services':
                 resources = self.network.list_services()
                 self.body = build_service_table(resources, self.edit_service)
@@ -216,6 +216,29 @@ class CarbonUI:
         self.network.update_service_yaml(namespace, name, yaml_content)
         self.resource_selection_screen()
         self.show_services(button) 
+
+    def edit_deployment(self, button, deployment):
+        namespace = deployment['namespace']
+        name = deployment['name']
+        yaml_content = self.workloads.get_deployment_yaml(namespace, name)
+        formatted_yaml = yaml.safe_dump(yaml.safe_load(yaml_content), default_flow_style=False)
+        edit_widget = urwid.Edit(edit_text=formatted_yaml)
+        body = urwid.ListBox(urwid.SimpleFocusListWalker([
+            urwid.Text(f"Editing {namespace}/{name}"),
+            urwid.Divider(),
+            edit_widget,
+            urwid.Divider(),
+            urwid.Button("Save", self.save_deployment, (namespace, name, edit_widget)),
+            urwid.Button("Cancel", lambda button: self.resource_selection_screen())
+        ]))
+        self.frame.body = body
+
+    def save_deployment(self, button, data):
+        namespace, name, edit_widget = data
+        yaml_content = edit_widget.get_edit_text()
+        self.workloads.update_deployment_yaml(namespace, name, yaml_content)
+        self.resource_selection_screen()
+        self.show_deployments(button)
 
     def close_connection(self, button):
         self.workloads = None

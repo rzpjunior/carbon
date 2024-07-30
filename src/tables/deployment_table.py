@@ -1,6 +1,6 @@
 import urwid
 
-def build_deployment_table(resources):
+def build_deployment_table(resources, edit_callback):
     headers = ['Name', 'Namespace', 'Pods', 'Replicas', 'Age', 'Conditions']
     table_header = [urwid.Text(header, align='center') for header in headers]
     table_header = urwid.AttrMap(urwid.Columns([
@@ -16,7 +16,7 @@ def build_deployment_table(resources):
     for resource in resources:
         conditions_attr = 'running' if 'Available' in resource['conditions'] else 'pending'
         row = [
-            urwid.Text(resource['name'], align='center'),
+            urwid.AttrMap(urwid.Button(resource['name'], on_press=edit_callback, user_data=resource), None, focus_map='reversed'),
             urwid.Text(resource['namespace'], align='center'),
             urwid.Text(resource['pods'], align='center'),
             urwid.Text(str(resource['replicas']), align='center'),

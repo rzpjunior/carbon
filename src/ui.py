@@ -121,7 +121,7 @@ class CarbonUI:
         try:
             if resource_type == 'pods':
                 resources = self.workloads.list_pods_detailed()
-                self.body = build_pod_table(resources)
+                self.body = build_pod_table(resources, self.edit_pod)
             elif resource_type == 'deployments':
                 resources = self.workloads.list_deployments_detailed()
                 self.body = build_deployment_table(resources)
@@ -140,6 +140,29 @@ class CarbonUI:
             self.body = urwid.ListBox(urwid.SimpleFocusListWalker([error_text]))
             self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
             self.loop.draw_screen()
+
+    def edit_pod(self, button, pod):
+        namespace = pod['namespace']
+        name = pod['name']
+        yaml_content = self.workloads.get_pod_yaml(namespace, name)
+        edit_widget = urwid.Edit(edit_text=yaml_content)
+        body = urwid.ListBox(urwid.SimpleFocusListWalker([
+            urwid.Text(f"Editing {namespace}/{name}"),
+            urwid.Divider(),
+            edit_widget,
+            urwid.Divider(),
+            urwid.Button("Save", self.save_pod, (namespace, name, edit_widget)),
+            urwid.Button("Cancel", lambda button: self.resource_selection_screen())
+        ]))
+        self.frame.body = body
+
+
+    def save_pod(self, button, data):
+        namespace, name, edit_widget = data
+        yaml_content = edit_widget.get_edit_text()
+        self.workloads.update_pod_yaml(namespace, name, yaml_content)
+        self.resource_selection_screen()
+        self.show_pods(button)
 
     def close_connection(self, button):
         self.workloads = None

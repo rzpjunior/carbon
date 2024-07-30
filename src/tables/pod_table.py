@@ -1,6 +1,6 @@
 import urwid
 
-def build_pod_table(resources):
+def build_pod_table(resources, edit_callback):
     headers = ['Name', 'Namespace', 'Status', 'Restarts', 'Age']
     table_header = [urwid.Text(header, align='center') for header in headers]
     table_header = urwid.AttrMap(urwid.Columns([
@@ -15,7 +15,7 @@ def build_pod_table(resources):
     for resource in resources:
         status_attr = 'running' if resource['status'] == 'Running' else 'pending' if resource['status'] == 'Pending' else 'failed'
         row = [
-            urwid.Text(resource['name'], align='center'),
+            urwid.AttrMap(urwid.Button(resource['name'], align='center', on_press=edit_callback, user_data=resource), None, focus_map='reversed'),
             urwid.Text(resource['namespace'], align='center'),
             urwid.AttrMap(urwid.Text(resource['status'], align='center'), status_attr),
             urwid.Text(str(resource['restarts']), align='center'),

@@ -1,5 +1,7 @@
 import urwid
 import yaml
+import subprocess
+import os
 
 from src.kubernetes.workloads import Workloads
 from src.kubernetes.network import Network
@@ -17,7 +19,7 @@ class CarbonUI:
         self.header = urwid.AttrMap(urwid.Text("Carbon - Kubernetes IDE", align='center'), 'header')
         self.body = urwid.Text("Please select a provider to get started.")
         self.terminal = TerminalWidget()
-        self.frame = urwid.Frame(header=self.header, body=self.body, footer=None)  # Initially, no footer (no terminal)
+        self.frame = urwid.Frame(header=self.header, body=self.body, footer=None)
         self.loop = urwid.MainLoop(self.frame, unhandled_input=self.handle_input, palette=[
             ('header', 'black', 'light gray', 'standout'),
             ('reversed', 'standout', ''),
@@ -38,7 +40,7 @@ class CarbonUI:
         ]
         self.body = urwid.ListBox(urwid.SimpleFocusListWalker(body))
         self.frame.body = self.body
-        self.frame.footer = None  # Hide terminal
+        self.frame.footer = None
 
     def choose_provider(self, button, provider):
         self.provider = provider
@@ -53,23 +55,27 @@ class CarbonUI:
         ]
         self.body = urwid.ListBox(urwid.SimpleFocusListWalker(body))
         self.frame.body = self.body
-        self.frame.footer = None  # Hide terminal
+        self.frame.footer = None
 
     def load_config(self, button):
         edit_widget = self.body.body[2]
         config_path = edit_widget.get_edit_text()
         try:
             load_config(config_path)
+            self.set_kubectl_config(config_path) 
             self.config_loaded = True
             self.workloads = Workloads()
             self.network = Network()
             self.namespace = Namespace()
             self.resource_selection_screen()
-            self.frame.footer = self.terminal  # Show terminal
+            self.frame.footer = self.terminal
         except Exception as e:
             error_text = urwid.Text(('failed', f"Error loading configuration: {str(e)}"))
             self.body.body.insert(3, error_text)
             self.loop.draw_screen()
+
+    def set_kubectl_config(self, config_path):
+        os.environ['KUBECONFIG'] = config_path
 
     def build_sidebar(self):
         menu_content = urwid.Pile([

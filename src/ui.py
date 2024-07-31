@@ -1,17 +1,19 @@
 import urwid
 import yaml
-import subprocess
 import os
 
 from src.kubernetes.workloads import Workloads
 from src.kubernetes.network import Network
 from src.kubernetes.namespace import Namespace
+from src.kubernetes.config import Config
 from src.utils.config_loader import load_config
 from src.tables.k8s.pod_table import build_pod_table
 from src.tables.k8s.deployment_table import build_deployment_table
 from src.tables.k8s.service_table import build_service_table
 from src.tables.k8s.ingress_table import build_ingress_table
 from src.tables.k8s.namespace_table import build_namespace_table
+from src.tables.k8s.configmap_table import build_configmap_table
+from src.tables.k8s.secret_table import build_secret_table
 from src.terminal import TerminalWidget
 from src.resources.resource_creator import ResourceCreator
 
@@ -89,6 +91,7 @@ class CarbonUI:
             self.workloads = Workloads()
             self.network = Network()
             self.namespace = Namespace()
+            self.config = Config()
             self.resource_selection_screen()
             self.frame.footer = self.terminal
         except Exception as e:
@@ -113,11 +116,16 @@ class CarbonUI:
             self.create_menu_button("Services", self.show_services),
             self.create_menu_button("Ingresses", self.show_ingresses),
             urwid.Divider(),
+            urwid.Text("Config:"),
+            urwid.Divider(),
+            self.create_menu_button("ConfigMaps", self.show_configmaps),
+            self.create_menu_button("Secrets", self.show_secrets),
+            urwid.Divider(),
             urwid.Text("Other:"),
             urwid.Divider(),
             self.create_menu_button("Namespaces", self.show_namespaces),
             urwid.Divider(),
-            urwid.Text("Create:"),
+            urwid.AttrMap(urwid.Text("Create", align='center'), 'header'),
             urwid.Divider(),
             self.create_menu_button("Ingress", self.create_ingress),
             self.create_menu_button("Deployment", self.create_deployment),
@@ -153,6 +161,12 @@ class CarbonUI:
 
     def show_namespaces(self, button):
         self.show_resources('namespaces')
+    
+    def show_configmaps(self, button):
+        self.show_resources('configmaps')
+
+    def show_secrets(self, button):
+        self.show_resources('secrets')
 
     def show_resources(self, resource_type):
         if not self.config_loaded:
@@ -175,6 +189,12 @@ class CarbonUI:
             elif resource_type == 'ingresses':
                 resources = self.network.list_ingresses()
                 self.body = build_ingress_table(resources, self.edit_ingress)
+            elif resource_type == 'configmaps':
+                resources = self.config.list_configmaps()
+                self.body = build_configmap_table(resources, self.edit_configmap)
+            elif resource_type == 'secrets':
+                resources = self.config.list_secrets()
+                self.body = build_secret_table(resources, self.edit_secret)
             elif resource_type == 'namespaces':
                 resources = self.namespace.list_namespaces()
                 self.body = build_namespace_table(resources)
@@ -259,6 +279,19 @@ class CarbonUI:
 
     def save_deployment(self, button, data):
         self.save_resource(button, data, self.workloads.update_deployment_yaml, self.show_deployments)
+    
+    def edit_configmap(self, button, configmap):
+        self.edit_resource(button, configmap, self.config.get_configmap_yaml, self.save_configmap, 'configmap')
+
+    def save_configmap(self, button, data):
+        self.save_resource(button, data, self.config.update_configmap_yaml, self.show_configmaps)
+
+    def edit_secret(self, button, secret):
+        self.edit_resource(button, secret, self.config.get_secret_yaml, self.save_secret, 'secret')
+
+    def save_secret(self, button, data):
+        self.save_resource(button, data, self.config.update_secret_yaml, self.show_secrets)
+
 
     def close_connection(self, button):
         self.workloads = None

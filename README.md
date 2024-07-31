@@ -2,7 +2,7 @@
 
 ## Overview
 
-**Carbon** is a simple, GUI-based terminal application designed to streamline Kubernetes management. It provides an easy-to-use interface for interacting with Kubernetes clusters, making it accessible for both beginners and experienced users.
+**Carbon** is a simple GUI-based terminal application designed to streamline Kubernetes management. It provides an easy-to-use interface for interacting with Kubernetes resources, making it accessible for both beginners and experienced users.
 
 ## Features
 

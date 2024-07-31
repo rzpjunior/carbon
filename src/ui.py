@@ -30,6 +30,7 @@ class CarbonUI:
         ])
         self.sidebar = None
         self.config_loaded = False
+        self.editing = False 
 
     def load_main_menu(self):
         body = [
@@ -154,13 +155,13 @@ class CarbonUI:
             self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
             self.loop.draw_screen()
 
-    def edit_pod(self, button, pod):
-        namespace = pod['namespace']
-        name = pod['name']
-        yaml_content = self.workloads.get_pod_yaml(namespace, name)
+    def edit_resource(self, button, resource, get_yaml_func, save_func, resource_type):
+        namespace = resource['namespace']
+        name = resource['name']
+        yaml_content = get_yaml_func(namespace, name)
         formatted_yaml = yaml.safe_dump(yaml.safe_load(yaml_content), default_flow_style=False)
         edit_widget = urwid.Edit(edit_text=formatted_yaml, multiline=True)
-        save_button = urwid.Button("Save", self.save_pod, (namespace, name, edit_widget))
+        save_button = urwid.Button("Save", save_func, (namespace, name, edit_widget))
         cancel_button = urwid.Button("Cancel", lambda button: self.resource_selection_screen())
         footer = urwid.Columns([save_button, cancel_button], dividechars=2)
         body = urwid.ListBox(urwid.SimpleFocusListWalker([
@@ -174,109 +175,42 @@ class CarbonUI:
         self.edit_widget = edit_widget
         self.save_button = save_button
         self.cancel_button = cancel_button
-        self.current_edit_resource = 'pod'
+        self.current_edit_resource = resource_type
         self.namespace = namespace
         self.name = name
+        self.editing = True 
+
+    def save_resource(self, button, data, update_func, show_func):
+        namespace, name, edit_widget = data
+        yaml_content = edit_widget.get_edit_text()
+        update_func(namespace, name, yaml_content)
+        self.resource_selection_screen()
+        show_func(button)
+        self.editing = False
+
+    def edit_pod(self, button, pod):
+        self.edit_resource(button, pod, self.workloads.get_pod_yaml, self.save_pod, 'pod')
 
     def save_pod(self, button, data):
-        namespace, name, edit_widget = data
-        yaml_content = edit_widget.get_edit_text()
-        self.workloads.update_pod_yaml(namespace, name, yaml_content)
-        self.resource_selection_screen()
-        self.show_pods(button)
+        self.save_resource(button, data, self.workloads.update_pod_yaml, self.show_pods)
 
     def edit_ingress(self, button, ingress):
-        namespace = ingress['namespace']
-        name = ingress['name']
-        yaml_content = self.network.get_ingress_yaml(namespace, name)
-        formatted_yaml = yaml.safe_dump(yaml.safe_load(yaml_content), default_flow_style=False)
-        edit_widget = urwid.Edit(edit_text=formatted_yaml, multiline=True)
-        save_button = urwid.Button("Save", self.save_ingress, (namespace, name, edit_widget))
-        cancel_button = urwid.Button("Cancel", lambda button: self.resource_selection_screen())
-        footer = urwid.Columns([save_button, cancel_button], dividechars=2)
-        body = urwid.ListBox(urwid.SimpleFocusListWalker([
-            urwid.Text(f"Editing {namespace}/{name}"),
-            urwid.Divider(),
-            edit_widget,
-            urwid.Divider(),
-            footer
-        ]))
-        self.frame.body = urwid.Frame(body, footer=footer)
-        self.edit_widget = edit_widget
-        self.save_button = save_button
-        self.cancel_button = cancel_button
-        self.current_edit_resource = 'ingress'
-        self.namespace = namespace
-        self.name = name
+        self.edit_resource(button, ingress, self.network.get_ingress_yaml, self.save_ingress, 'ingress')
 
     def save_ingress(self, button, data):
-        namespace, name, edit_widget = data
-        yaml_content = edit_widget.get_edit_text()
-        self.network.update_ingress_yaml(namespace, name, yaml_content)
-        self.resource_selection_screen()
-        self.show_ingresses(button)
+        self.save_resource(button, data, self.network.update_ingress_yaml, self.show_ingresses)
 
     def edit_service(self, button, service):
-        namespace = service['namespace']
-        name = service['name']
-        yaml_content = self.network.get_service_yaml(namespace, name)
-        formatted_yaml = yaml.safe_dump(yaml.safe_load(yaml_content), default_flow_style=False)
-        edit_widget = urwid.Edit(edit_text=formatted_yaml, multiline=True)
-        save_button = urwid.Button("Save", self.save_service, (namespace, name, edit_widget))
-        cancel_button = urwid.Button("Cancel", lambda button: self.resource_selection_screen())
-        footer = urwid.Columns([save_button, cancel_button], dividechars=2)
-        body = urwid.ListBox(urwid.SimpleFocusListWalker([
-            urwid.Text(f"Editing {namespace}/{name}"),
-            urwid.Divider(),
-            edit_widget,
-            urwid.Divider(),
-            footer
-        ]))
-        self.frame.body = urwid.Frame(body, footer=footer)
-        self.edit_widget = edit_widget
-        self.save_button = save_button
-        self.cancel_button = cancel_button
-        self.current_edit_resource = 'service'
-        self.namespace = namespace
-        self.name = name
+        self.edit_resource(button, service, self.network.get_service_yaml, self.save_service, 'service')
 
     def save_service(self, button, data):
-        namespace, name, edit_widget = data
-        yaml_content = edit_widget.get_edit_text()
-        self.network.update_service_yaml(namespace, name, yaml_content)
-        self.resource_selection_screen()
-        self.show_services(button)
+        self.save_resource(button, data, self.network.update_service_yaml, self.show_services)
 
     def edit_deployment(self, button, deployment):
-        namespace = deployment['namespace']
-        name = deployment['name']
-        yaml_content = self.workloads.get_deployment_yaml(namespace, name)
-        formatted_yaml = yaml.safe_dump(yaml.safe_load(yaml_content), default_flow_style=False)
-        edit_widget = urwid.Edit(edit_text=formatted_yaml, multiline=True)
-        save_button = urwid.Button("Save", self.save_deployment, (namespace, name, edit_widget))
-        cancel_button = urwid.Button("Cancel", lambda button: self.resource_selection_screen())
-        footer = urwid.Columns([save_button, cancel_button], dividechars=2)
-        body = urwid.ListBox(urwid.SimpleFocusListWalker([
-            urwid.Text(f"Editing {namespace}/{name}"),
-            urwid.Divider(),
-            edit_widget,
-            urwid.Divider(),
-            footer
-        ]))
-        self.frame.body = urwid.Frame(body, footer=footer)
-        self.edit_widget = edit_widget
-        self.save_button = save_button
-        self.cancel_button = cancel_button
-        self.current_edit_resource = 'deployment'
-        self.namespace = namespace
-        self.name = name
+        self.edit_resource(button, deployment, self.workloads.get_deployment_yaml, self.save_deployment, 'deployment')
 
     def save_deployment(self, button, data):
-        namespace, name, edit_widget = data
-        yaml_content = edit_widget.get_edit_text()
-        self.workloads.update_deployment_yaml(namespace, name, yaml_content)
-        self.resource_selection_screen()
-        self.show_deployments(button)
+        self.save_resource(button, data, self.workloads.update_deployment_yaml, self.show_deployments)
 
 
     def close_connection(self, button):
@@ -299,9 +233,10 @@ class CarbonUI:
         if isinstance(key, tuple) and key[0] == 'mouse release':
             return 
 
-        if hasattr(self, 'edit_widget'):
+        if self.editing:
             if key == 'ctrl x':
                 self.resource_selection_screen()
+                self.editing = False
             elif key == 'ctrl o':
                 if self.current_edit_resource == 'pod':
                     self.save_pod(None, (self.namespace, self.name, self.edit_widget))
@@ -311,7 +246,8 @@ class CarbonUI:
                     self.save_service(None, (self.namespace, self.name, self.edit_widget))
                 elif self.current_edit_resource == 'deployment':
                     self.save_deployment(None, (self.namespace, self.name, self.edit_widget))
-            else:
+        else:
+            if hasattr(self, 'edit_widget'):
                 self.edit_widget.keypress((80,), key)
 
         if self.terminal:

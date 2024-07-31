@@ -38,14 +38,56 @@ class ResourceCreator:
 
     def get_fields_for_resource(self, resource_type):
         fields = {
-            'Ingress': [{'label': 'Name', 'default': ''}, {'label': 'Namespace', 'default': 'default'}, {'label': 'Rules', 'default': '', 'multiline': True}],
-            'Deployment': [{'label': 'Name', 'default': ''}, {'label': 'Namespace', 'default': 'default'}, {'label': 'Replicas', 'default': '1'}, {'label': 'Containers', 'default': '', 'multiline': True}],
-            'Service': [{'label': 'Name', 'default': ''}, {'label': 'Namespace', 'default': 'default'}, {'label': 'Ports', 'default': '', 'multiline': True}],
-            'Namespace': [{'label': 'Name', 'default': ''}],
-            'Secret': [{'label': 'Name', 'default': ''}, {'label': 'Namespace', 'default': 'default'}, {'label': 'Data', 'default': '', 'multiline': True}],
-            'ConfigMap': [{'label': 'Name', 'default': ''}, {'label': 'Namespace', 'default': 'default'}, {'label': 'Data', 'default': '', 'multiline': True}]
+            'Ingress': [
+                {'label': 'Name', 'default': ''},
+                {'label': 'Namespace', 'default': 'default'},
+                {'label': 'Ingress Class Name', 'default': ''},
+                {'label': 'Host', 'default': ''},
+                {'label': 'Path', 'default': ''},
+                {'label': 'Service Name', 'default': ''},
+                {'label': 'Service Port', 'default': '80'},
+                {'label': 'Annotations', 'default': '{}', 'multiline': True}
+            ],
+            'Deployment': [
+                {'label': 'Name', 'default': ''},
+                {'label': 'Namespace', 'default': 'default'},
+                {'label': 'Replicas', 'default': '1'},
+                {'label': 'Labels', 'default': '{}', 'multiline': True},
+                {'label': 'Container Name', 'default': ''},
+                {'label': 'Container Image', 'default': ''},
+                {'label': 'Container Ports', 'default': '[{"name": "http-port", "containerPort": 3000}]', 'multiline': True},
+                {'label': 'Environment Variables', 'default': '[]', 'multiline': True},
+                {'label': 'Volumes', 'default': '[]', 'multiline': True},
+                {'label': 'Volume Mounts', 'default': '[]', 'multiline': True},
+                {'label': 'Image Pull Secrets', 'default': '[]', 'multiline': True}
+            ],
+            'Service': [
+                {'label': 'Name', 'default': ''},
+                {'label': 'Namespace', 'default': 'default'},
+                {'label': 'Type', 'default': 'ClusterIP'},
+                {'label': 'Ports', 'default': '[]', 'multiline': True},
+                {'label': 'Selector', 'default': '{}', 'multiline': True}
+            ],
+            'Namespace': [
+                {'label': 'Name', 'default': ''},
+                {'label': 'Labels', 'default': '{}', 'multiline': True}
+            ],
+            'Secret': [
+                {'label': 'Name', 'default': ''},
+                {'label': 'Namespace', 'default': 'default'},
+                {'label': 'Type', 'default': 'Opaque'},
+                {'label': 'Data', 'default': '{}', 'multiline': True},
+                {'label': 'String Data', 'default': '{}', 'multiline': True}
+            ],
+            'ConfigMap': [
+                {'label': 'Name', 'default': ''},
+                {'label': 'Namespace', 'default': 'default'},
+                {'label': 'Data', 'default': '{}', 'multiline': True},
+                {'label': 'Binary Data', 'default': '{}', 'multiline': True}
+            ]
         }
         return fields.get(resource_type, [])
+
 
     def save_resource_yaml(self, button, resource_type):
         field_values = {}

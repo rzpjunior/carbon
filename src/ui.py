@@ -7,16 +7,17 @@ from src.kubernetes.workloads import Workloads
 from src.kubernetes.network import Network
 from src.kubernetes.namespace import Namespace
 from src.utils.config_loader import load_config
-from src.tables.pod_table import build_pod_table
-from src.tables.deployment_table import build_deployment_table
-from src.tables.service_table import build_service_table
-from src.tables.ingress_table import build_ingress_table
-from src.tables.namespace_table import build_namespace_table
+from src.tables.k8s.pod_table import build_pod_table
+from src.tables.k8s.deployment_table import build_deployment_table
+from src.tables.k8s.service_table import build_service_table
+from src.tables.k8s.ingress_table import build_ingress_table
+from src.tables.k8s.namespace_table import build_namespace_table
 from src.terminal import TerminalWidget
+from src.resources.resource_creator import ResourceCreator
 
 class CarbonUI:
     def __init__(self):
-        self.header = urwid.AttrMap(urwid.Text("Carbon - Simple GUI-based terminal", align='center'), 'header')
+        self.header = urwid.AttrMap(urwid.Text("CARBON - Simple Kubernetes GUI-based Terminal", align='center'), 'header')
         self.body = urwid.Text("Please select a provider to get started.")
         self.terminal = TerminalWidget()
         self.frame = urwid.Frame(header=self.header, body=self.body, footer=None)
@@ -31,6 +32,7 @@ class CarbonUI:
         self.sidebar = None
         self.config_loaded = False
         self.editing = False 
+        self.resource_creator = ResourceCreator(self)
 
     def load_main_menu(self):
         ascii_banner = urwid.Text("""
@@ -40,7 +42,7 @@ class CarbonUI:
     | |    |  _  ||    /| ___ \| | | | . ` |
     | \__/\| | | || |\ \| |_/ /\ \_/ / |\  |
      \____/\_| |_/\_| \_\____/  \___/\_| \_/
-    ver 0.1.0
+    ver 1.0.0
                                             
     Simplifying Kubernetes with a GUI-Based Terminal
                                         by rzpjunior
@@ -114,6 +116,15 @@ class CarbonUI:
             urwid.Text("Other:"),
             urwid.Divider(),
             self.create_menu_button("Namespaces", self.show_namespaces),
+            urwid.Divider(),
+            urwid.Text("Create:"),
+            urwid.Divider(),
+            self.create_menu_button("Ingress", self.create_ingress),
+            self.create_menu_button("Deployment", self.create_deployment),
+            self.create_menu_button("Service", self.create_service),
+            self.create_menu_button("Namespace", self.create_namespace),
+            self.create_menu_button("Secret", self.create_secret),
+            self.create_menu_button("ConfigMap", self.create_configmap),
         ])
         return urwid.LineBox(menu_content, title="Menu")
 
@@ -197,7 +208,7 @@ class CarbonUI:
         self.current_edit_resource = resource_type
         self.namespace = namespace
         self.name = name
-        self.editing = True  # Set editing mode to True
+        self.editing = True
 
     def save_resource(self, button, data, update_func, show_func):
         namespace, name, edit_widget = data
@@ -205,7 +216,25 @@ class CarbonUI:
         update_func(namespace, name, yaml_content)
         self.resource_selection_screen()
         show_func(button)
-        self.editing = False  # Set editing mode to False
+        self.editing = False
+
+    def create_ingress(self, button):
+        self.resource_creator.create_resource_screen('Ingress')
+
+    def create_deployment(self, button):
+        self.resource_creator.create_resource_screen('Deployment')
+
+    def create_service(self, button):
+        self.resource_creator.create_resource_screen('Service')
+
+    def create_namespace(self, button):
+        self.resource_creator.create_resource_screen('Namespace')
+
+    def create_secret(self, button):
+        self.resource_creator.create_resource_screen('Secret')
+
+    def create_configmap(self, button):
+        self.resource_creator.create_resource_screen('ConfigMap')
 
     def edit_pod(self, button, pod):
         self.edit_resource(button, pod, self.workloads.get_pod_yaml, self.save_pod, 'pod')
@@ -231,7 +260,6 @@ class CarbonUI:
     def save_deployment(self, button, data):
         self.save_resource(button, data, self.workloads.update_deployment_yaml, self.show_deployments)
 
-
     def close_connection(self, button):
         self.workloads = None
         self.network = None
@@ -246,11 +274,8 @@ class CarbonUI:
         if key in ('q', 'Q'):
             raise urwid.ExitMainLoop()
 
-        if isinstance(key, tuple) and key[0] == 'mouse press':
+        if isinstance(key, tuple) and key[0] in ('mouse press', 'mouse release', 'mouse drag', 'ctrl mouse release', 'ctrl mouse press'):
             return
-
-        if isinstance(key, tuple) and key[0] == 'mouse release':
-            return 
 
         if self.editing:
             if key == 'ctrl x':

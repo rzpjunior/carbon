@@ -19,6 +19,18 @@ from src.resources.resource_creator import ResourceCreator
 
 class CarbonUI:
     def __init__(self):
+        self.ascii_banner = urwid.Text("""
+     _____   ___  ____________  _____ _   _ 
+    /  __ \ / _ \ | ___ \ ___ \|  _  | \ | |
+    | /  \// /_\ \| |_/ / |_/ /| | | |  \| |
+    | |    |  _  ||    /| ___ \| | | | . ` |
+    | \__/\| | | || |\ \| |_/ /\ \_/ / |\  |
+     \____/\_| |_/\_| \_\____/  \___/\_| \_/
+    ver 1.0.0
+                                            
+    Simplifying Kubernetes with a GUI-Based Terminal
+                                        by rzpjunior
+        """, align='center')
         self.header = urwid.AttrMap(urwid.Text("CARBON - Simple Kubernetes GUI-based Terminal", align='center'), 'header')
         self.body = urwid.Text("Please select a provider to get started.")
         self.terminal = TerminalWidget()
@@ -37,21 +49,9 @@ class CarbonUI:
         self.resource_creator = ResourceCreator(self)
 
     def load_main_menu(self):
-        ascii_banner = urwid.Text("""
-     _____   ___  ____________  _____ _   _ 
-    /  __ \ / _ \ | ___ \ ___ \|  _  | \ | |
-    | /  \// /_\ \| |_/ / |_/ /| | | |  \| |
-    | |    |  _  ||    /| ___ \| | | | . ` |
-    | \__/\| | | || |\ \| |_/ /\ \_/ / |\  |
-     \____/\_| |_/\_| \_\____/  \___/\_| \_/
-    ver 1.0.0
-                                            
-    Simplifying Kubernetes with a GUI-Based Terminal
-                                        by rzpjunior
-        """, align='center')
         
         body = urwid.Pile([
-            ascii_banner,
+            self.ascii_banner,
             urwid.Divider(),
             urwid.Text("Choose your provider:", align='center'),
             urwid.Divider(),
@@ -71,7 +71,8 @@ class CarbonUI:
     def load_config_screen(self):
         self.config_edit = urwid.Edit(caption="Path: ", edit_text="")
         body = urwid.Pile([
-            urwid.Text("Enter path to your YAML configuration:", align='center'),
+            self.ascii_banner,
+            urwid.AttrMap(urwid.Text("Enter path to your YAML configuration", align='center'), 'header'),
             urwid.Divider(),
             self.config_edit,
             urwid.Divider(),

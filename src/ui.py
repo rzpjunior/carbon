@@ -17,7 +17,7 @@ from src.resources.resource_creator import ResourceCreator
 
 class CarbonUI:
     def __init__(self):
-        self.header = urwid.AttrMap(urwid.Text("CARBON - Simple GUI-based K8s v0.1.0 IDE by rzpjunior", align='center'), 'header')
+        self.header = urwid.AttrMap(urwid.Text("CARBON - Simple Kubernetes GUI-based Terminal", align='center'), 'header')
         self.body = urwid.Text("Please select a provider to get started.")
         self.terminal = TerminalWidget()
         self.frame = urwid.Frame(header=self.header, body=self.body, footer=None)
@@ -42,7 +42,7 @@ class CarbonUI:
     | |    |  _  ||    /| ___ \| | | | . ` |
     | \__/\| | | || |\ \| |_/ /\ \_/ / |\  |
      \____/\_| |_/\_| \_\____/  \___/\_| \_/
-    ver 0.1.0
+    ver 1.0.0
                                             
     Simplifying Kubernetes with a GUI-Based Terminal
                                         by rzpjunior

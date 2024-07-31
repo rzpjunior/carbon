@@ -16,6 +16,7 @@ from src.tables.k8s.configmap_table import build_configmap_table
 from src.tables.k8s.secret_table import build_secret_table
 from src.terminal import TerminalWidget
 from src.resources.resource_creator import ResourceCreator
+from src.com.loading import LoadingWidget
 
 class CarbonUI:
     def __init__(self):
@@ -47,6 +48,7 @@ class CarbonUI:
         self.config_loaded = False
         self.editing = False 
         self.resource_creator = ResourceCreator(self)
+        self.loading_widget = LoadingWidget()
 
     def load_main_menu(self):
         
@@ -169,6 +171,15 @@ class CarbonUI:
     def show_secrets(self, button):
         self.show_resources('secrets')
 
+    def show_loading(self):
+        loading_text = urwid.Text("Loading resources, please wait...", align='center')
+        loading_spinner = urwid.Padding(self.loading_widget, align='center', width=('relative', 100))
+        loading_pile = urwid.Pile([loading_text, urwid.Divider(), loading_spinner])
+        self.body = urwid.Filler(loading_pile, valign='middle')
+        self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
+        self.loading_widget.start(self.loop)
+        self.loop.draw_screen()
+
     def show_resources(self, resource_type):
         if not self.config_loaded:
             error_text = urwid.Text(('failed', "Configuration not loaded. Please load your configuration first."))
@@ -176,35 +187,42 @@ class CarbonUI:
             self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
             self.loop.draw_screen()
             return
+
+        self.show_loading()
         
-        try:
-            if resource_type == 'pods':
-                resources = self.workloads.list_pods_detailed()
-                self.body = build_pod_table(resources, self.edit_pod)
-            elif resource_type == 'deployments':
-                resources = self.workloads.list_deployments_detailed()
-                self.body = build_deployment_table(resources, self.edit_deployment)
-            elif resource_type == 'services':
-                resources = self.network.list_services()
-                self.body = build_service_table(resources, self.edit_service)
-            elif resource_type == 'ingresses':
-                resources = self.network.list_ingresses()
-                self.body = build_ingress_table(resources, self.edit_ingress)
-            elif resource_type == 'configmaps':
-                resources = self.config.list_configmaps()
-                self.body = build_configmap_table(resources, self.edit_configmap)
-            elif resource_type == 'secrets':
-                resources = self.config.list_secrets()
-                self.body = build_secret_table(resources, self.edit_secret)
-            elif resource_type == 'namespaces':
-                resources = self.namespace.list_namespaces()
-                self.body = build_namespace_table(resources)
-            self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
-        except Exception as e:
-            error_text = urwid.Text(('failed', f"Error fetching {resource_type}: {str(e)}"))
-            self.body = urwid.ListBox(urwid.SimpleFocusListWalker([error_text]))
-            self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
-            self.loop.draw_screen()
+        def fetch_resources(loop, user_data):
+            try:
+                if resource_type == 'pods':
+                    resources = self.workloads.list_pods_detailed()
+                    self.body = build_pod_table(resources, self.edit_pod)
+                elif resource_type == 'deployments':
+                    resources = self.workloads.list_deployments_detailed()
+                    self.body = build_deployment_table(resources, self.edit_deployment)
+                elif resource_type == 'services':
+                    resources = self.network.list_services()
+                    self.body = build_service_table(resources, self.edit_service)
+                elif resource_type == 'ingresses':
+                    resources = self.network.list_ingresses()
+                    self.body = build_ingress_table(resources, self.edit_ingress)
+                elif resource_type == 'configmaps':
+                    resources = self.config.list_configmaps()
+                    self.body = build_configmap_table(resources, self.edit_configmap)
+                elif resource_type == 'secrets':
+                    resources = self.config.list_secrets()
+                    self.body = build_secret_table(resources, self.edit_secret)
+                elif resource_type == 'namespaces':
+                    resources = self.namespace.list_namespaces()
+                    self.body = build_namespace_table(resources)
+                self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
+                self.loading_widget.stop()
+            except Exception as e:
+                error_text = urwid.Text(('failed', f"Error fetching {resource_type}: {str(e)}"))
+                self.body = urwid.ListBox(urwid.SimpleFocusListWalker([error_text]))
+                self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
+                self.loading_widget.stop()
+                self.loop.draw_screen()
+        
+        self.loop.set_alarm_in(0.1, fetch_resources)
 
     def edit_resource(self, button, resource, get_yaml_func, save_func, resource_type):
         namespace = resource['namespace']
@@ -292,7 +310,6 @@ class CarbonUI:
 
     def save_secret(self, button, data):
         self.save_resource(button, data, self.config.update_secret_yaml, self.show_secrets)
-
 
     def close_connection(self, button):
         self.workloads = None

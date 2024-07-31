@@ -16,7 +16,7 @@ from src.terminal import TerminalWidget
 
 class CarbonUI:
     def __init__(self):
-        self.header = urwid.AttrMap(urwid.Text("Carbon - Kubernetes IDE", align='center'), 'header')
+        self.header = urwid.AttrMap(urwid.Text("Carbon - Simple GUI-based terminal", align='center'), 'header')
         self.body = urwid.Text("Please select a provider to get started.")
         self.terminal = TerminalWidget()
         self.frame = urwid.Frame(header=self.header, body=self.body, footer=None)
@@ -33,13 +33,30 @@ class CarbonUI:
         self.editing = False 
 
     def load_main_menu(self):
-        body = [
-            urwid.Text("Choose your provider:"),
+        ascii_banner = urwid.Text("""
+     _____   ___  ____________  _____ _   _ 
+    /  __ \ / _ \ | ___ \ ___ \|  _  | \ | |
+    | /  \// /_\ \| |_/ / |_/ /| | | |  \| |
+    | |    |  _  ||    /| ___ \| | | | . ` |
+    | \__/\| | | || |\ \| |_/ /\ \_/ / |\  |
+     \____/\_| |_/\_| \_\____/  \___/\_| \_/
+    ver 0.1.0
+                                            
+    Simplifying Kubernetes with a GUI-Based Terminal
+                                        by rzpjunior
+        """, align='center')
+        
+        body = urwid.Pile([
+            ascii_banner,
             urwid.Divider(),
-            urwid.Button("DigitalOcean", self.choose_provider, 'digitalocean'),
-            urwid.Button("AWS", self.choose_provider, 'aws'),
-        ]
-        self.body = urwid.ListBox(urwid.SimpleFocusListWalker(body))
+            urwid.Text("Choose your provider:", align='center'),
+            urwid.Divider(),
+            urwid.AttrMap(urwid.Button("DigitalOcean", self.choose_provider, 'digitalocean'), None, focus_map='reversed'),
+            urwid.AttrMap(urwid.Button("AWS", self.choose_provider, 'aws'), None, focus_map='reversed'),
+            urwid.Divider(),
+            urwid.Text("Note: This will set the configuration for kubectl", align='center'),
+        ])
+        self.body = urwid.Filler(body, valign='top')
         self.frame.body = self.body
         self.frame.footer = None
 
@@ -48,22 +65,24 @@ class CarbonUI:
         self.load_config_screen()
 
     def load_config_screen(self):
-        body = [
-            urwid.Text("Enter path to your YAML configuration:"),
+        self.config_edit = urwid.Edit(caption="Path: ", edit_text="")
+        body = urwid.Pile([
+            urwid.Text("Enter path to your YAML configuration:", align='center'),
             urwid.Divider(),
-            urwid.Edit(caption="Path: ", edit_text=""),
-            urwid.Button("Load", self.load_config),
-        ]
-        self.body = urwid.ListBox(urwid.SimpleFocusListWalker(body))
+            self.config_edit,
+            urwid.Divider(),
+            urwid.AttrMap(urwid.Button("Load", self.load_config), None, focus_map='reversed'),
+            urwid.AttrMap(urwid.Button("Back", self.back_to_main), None, focus_map='reversed'),
+        ])
+        self.body = urwid.Filler(body, valign='top')
         self.frame.body = self.body
         self.frame.footer = None
 
     def load_config(self, button):
-        edit_widget = self.body.body[2]
-        config_path = edit_widget.get_edit_text()
+        config_path = self.config_edit.get_edit_text()
         try:
             load_config(config_path)
-            self.set_kubectl_config(config_path) 
+            self.set_kubectl_config(config_path)
             self.config_loaded = True
             self.workloads = Workloads()
             self.network = Network()
@@ -72,7 +91,7 @@ class CarbonUI:
             self.frame.footer = self.terminal
         except Exception as e:
             error_text = urwid.Text(('failed', f"Error loading configuration: {str(e)}"))
-            self.body.body.insert(3, error_text)
+            self.body.body.append(error_text)
             self.loop.draw_screen()
 
     def set_kubectl_config(self, config_path):
@@ -178,7 +197,7 @@ class CarbonUI:
         self.current_edit_resource = resource_type
         self.namespace = namespace
         self.name = name
-        self.editing = True 
+        self.editing = True  # Set editing mode to True
 
     def save_resource(self, button, data, update_func, show_func):
         namespace, name, edit_widget = data
@@ -186,7 +205,7 @@ class CarbonUI:
         update_func(namespace, name, yaml_content)
         self.resource_selection_screen()
         show_func(button)
-        self.editing = False
+        self.editing = False  # Set editing mode to False
 
     def edit_pod(self, button, pod):
         self.edit_resource(button, pod, self.workloads.get_pod_yaml, self.save_pod, 'pod')

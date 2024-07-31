@@ -1,22 +1,37 @@
 import urwid
 import yaml
-import subprocess
 import os
 
 from src.kubernetes.workloads import Workloads
 from src.kubernetes.network import Network
 from src.kubernetes.namespace import Namespace
+from src.kubernetes.config import Config
 from src.utils.config_loader import load_config
 from src.tables.k8s.pod_table import build_pod_table
 from src.tables.k8s.deployment_table import build_deployment_table
 from src.tables.k8s.service_table import build_service_table
 from src.tables.k8s.ingress_table import build_ingress_table
 from src.tables.k8s.namespace_table import build_namespace_table
+from src.tables.k8s.configmap_table import build_configmap_table
+from src.tables.k8s.secret_table import build_secret_table
 from src.terminal import TerminalWidget
 from src.resources.resource_creator import ResourceCreator
+from src.com.loading import LoadingWidget
 
 class CarbonUI:
     def __init__(self):
+        self.ascii_banner = urwid.Text("""
+     _____   ___  ____________  _____ _   _ 
+    /  __ \ / _ \ | ___ \ ___ \|  _  | \ | |
+    | /  \// /_\ \| |_/ / |_/ /| | | |  \| |
+    | |    |  _  ||    /| ___ \| | | | . ` |
+    | \__/\| | | || |\ \| |_/ /\ \_/ / |\  |
+     \____/\_| |_/\_| \_\____/  \___/\_| \_/
+    ver 1.0.0
+                                            
+    Simplifying Kubernetes with a GUI-Based Terminal
+                                        by rzpjunior
+        """, align='center')
         self.header = urwid.AttrMap(urwid.Text("CARBON - Simple Kubernetes GUI-based Terminal", align='center'), 'header')
         self.body = urwid.Text("Please select a provider to get started.")
         self.terminal = TerminalWidget()
@@ -33,23 +48,12 @@ class CarbonUI:
         self.config_loaded = False
         self.editing = False 
         self.resource_creator = ResourceCreator(self)
+        self.loading_widget = LoadingWidget()
 
     def load_main_menu(self):
-        ascii_banner = urwid.Text("""
-     _____   ___  ____________  _____ _   _ 
-    /  __ \ / _ \ | ___ \ ___ \|  _  | \ | |
-    | /  \// /_\ \| |_/ / |_/ /| | | |  \| |
-    | |    |  _  ||    /| ___ \| | | | . ` |
-    | \__/\| | | || |\ \| |_/ /\ \_/ / |\  |
-     \____/\_| |_/\_| \_\____/  \___/\_| \_/
-    ver 1.0.0
-                                            
-    Simplifying Kubernetes with a GUI-Based Terminal
-                                        by rzpjunior
-        """, align='center')
         
         body = urwid.Pile([
-            ascii_banner,
+            self.ascii_banner,
             urwid.Divider(),
             urwid.Text("Choose your provider:", align='center'),
             urwid.Divider(),
@@ -69,7 +73,8 @@ class CarbonUI:
     def load_config_screen(self):
         self.config_edit = urwid.Edit(caption="Path: ", edit_text="")
         body = urwid.Pile([
-            urwid.Text("Enter path to your YAML configuration:", align='center'),
+            self.ascii_banner,
+            urwid.AttrMap(urwid.Text("Enter path to your YAML configuration", align='center'), 'header'),
             urwid.Divider(),
             self.config_edit,
             urwid.Divider(),
@@ -89,6 +94,7 @@ class CarbonUI:
             self.workloads = Workloads()
             self.network = Network()
             self.namespace = Namespace()
+            self.config = Config()
             self.resource_selection_screen()
             self.frame.footer = self.terminal
         except Exception as e:
@@ -113,11 +119,16 @@ class CarbonUI:
             self.create_menu_button("Services", self.show_services),
             self.create_menu_button("Ingresses", self.show_ingresses),
             urwid.Divider(),
+            urwid.Text("Config:"),
+            urwid.Divider(),
+            self.create_menu_button("ConfigMaps", self.show_configmaps),
+            self.create_menu_button("Secrets", self.show_secrets),
+            urwid.Divider(),
             urwid.Text("Other:"),
             urwid.Divider(),
             self.create_menu_button("Namespaces", self.show_namespaces),
             urwid.Divider(),
-            urwid.Text("Create:"),
+            urwid.AttrMap(urwid.Text("Create", align='center'), 'header'),
             urwid.Divider(),
             self.create_menu_button("Ingress", self.create_ingress),
             self.create_menu_button("Deployment", self.create_deployment),
@@ -153,6 +164,21 @@ class CarbonUI:
 
     def show_namespaces(self, button):
         self.show_resources('namespaces')
+    
+    def show_configmaps(self, button):
+        self.show_resources('configmaps')
+
+    def show_secrets(self, button):
+        self.show_resources('secrets')
+
+    def show_loading(self):
+        loading_text = urwid.Text("Loading resources, please wait...", align='center')
+        loading_spinner = urwid.Padding(self.loading_widget, align='center', width=('relative', 100))
+        loading_pile = urwid.Pile([loading_text, urwid.Divider(), loading_spinner])
+        self.body = urwid.Filler(loading_pile, valign='middle')
+        self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
+        self.loading_widget.start(self.loop)
+        self.loop.draw_screen()
 
     def show_resources(self, resource_type):
         if not self.config_loaded:
@@ -161,29 +187,42 @@ class CarbonUI:
             self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
             self.loop.draw_screen()
             return
+
+        self.show_loading()
         
-        try:
-            if resource_type == 'pods':
-                resources = self.workloads.list_pods_detailed()
-                self.body = build_pod_table(resources, self.edit_pod)
-            elif resource_type == 'deployments':
-                resources = self.workloads.list_deployments_detailed()
-                self.body = build_deployment_table(resources, self.edit_deployment)
-            elif resource_type == 'services':
-                resources = self.network.list_services()
-                self.body = build_service_table(resources, self.edit_service)
-            elif resource_type == 'ingresses':
-                resources = self.network.list_ingresses()
-                self.body = build_ingress_table(resources, self.edit_ingress)
-            elif resource_type == 'namespaces':
-                resources = self.namespace.list_namespaces()
-                self.body = build_namespace_table(resources)
-            self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
-        except Exception as e:
-            error_text = urwid.Text(('failed', f"Error fetching {resource_type}: {str(e)}"))
-            self.body = urwid.ListBox(urwid.SimpleFocusListWalker([error_text]))
-            self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
-            self.loop.draw_screen()
+        def fetch_resources(loop, user_data):
+            try:
+                if resource_type == 'pods':
+                    resources = self.workloads.list_pods_detailed()
+                    self.body = build_pod_table(resources, self.edit_pod)
+                elif resource_type == 'deployments':
+                    resources = self.workloads.list_deployments_detailed()
+                    self.body = build_deployment_table(resources, self.edit_deployment)
+                elif resource_type == 'services':
+                    resources = self.network.list_services()
+                    self.body = build_service_table(resources, self.edit_service)
+                elif resource_type == 'ingresses':
+                    resources = self.network.list_ingresses()
+                    self.body = build_ingress_table(resources, self.edit_ingress)
+                elif resource_type == 'configmaps':
+                    resources = self.config.list_configmaps()
+                    self.body = build_configmap_table(resources, self.edit_configmap)
+                elif resource_type == 'secrets':
+                    resources = self.config.list_secrets()
+                    self.body = build_secret_table(resources, self.edit_secret)
+                elif resource_type == 'namespaces':
+                    resources = self.namespace.list_namespaces()
+                    self.body = build_namespace_table(resources)
+                self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
+                self.loading_widget.stop()
+            except Exception as e:
+                error_text = urwid.Text(('failed', f"Error fetching {resource_type}: {str(e)}"))
+                self.body = urwid.ListBox(urwid.SimpleFocusListWalker([error_text]))
+                self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
+                self.loading_widget.stop()
+                self.loop.draw_screen()
+        
+        self.loop.set_alarm_in(0.1, fetch_resources)
 
     def edit_resource(self, button, resource, get_yaml_func, save_func, resource_type):
         namespace = resource['namespace']
@@ -259,6 +298,18 @@ class CarbonUI:
 
     def save_deployment(self, button, data):
         self.save_resource(button, data, self.workloads.update_deployment_yaml, self.show_deployments)
+    
+    def edit_configmap(self, button, configmap):
+        self.edit_resource(button, configmap, self.config.get_configmap_yaml, self.save_configmap, 'configmap')
+
+    def save_configmap(self, button, data):
+        self.save_resource(button, data, self.config.update_configmap_yaml, self.show_configmaps)
+
+    def edit_secret(self, button, secret):
+        self.edit_resource(button, secret, self.config.get_secret_yaml, self.save_secret, 'secret')
+
+    def save_secret(self, button, data):
+        self.save_resource(button, data, self.config.update_secret_yaml, self.show_secrets)
 
     def close_connection(self, button):
         self.workloads = None

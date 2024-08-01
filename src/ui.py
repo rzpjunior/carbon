@@ -159,7 +159,7 @@ class CarbonUI:
                     self.body = build_secret_table(resources, self.edit_secret)
                 elif resource_type == 'namespaces':
                     resources = self.namespace.list_namespaces()
-                    self.body = build_namespace_table(resources)
+                    self.body = build_namespace_table(resources, self.edit_namespace, self.delete_namespace)
                 self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
                 self.loading_widget.stop()
             except Exception as e:
@@ -170,6 +170,44 @@ class CarbonUI:
                 self.loop.draw_screen()
         
         self.loop.set_alarm_in(0.1, fetch_resources)
+
+    def delete_namespace(self, button, namespace):
+        try:
+            self.namespace.delete_namespace(namespace['name'])
+            self.show_namespaces(button)
+        except Exception as e:
+            error_text = urwid.Text(('failed', f"Error deleting namespace: {str(e)}"))
+            self.body.body.append(error_text)
+            self.loop.draw_screen()
+
+    def edit_namespace(self, button, namespace):
+        yaml_content = self.namespace.get_namespace_yaml(namespace['name'])
+        formatted_yaml = yaml.safe_dump(yaml_content, default_flow_style=False)
+        edit_widget = urwid.Edit(edit_text=formatted_yaml, multiline=True)
+        save_button = urwid.Button("Save", self.save_namespace, (namespace['name'], edit_widget))
+        cancel_button = urwid.Button("Cancel", lambda button: self.resource_selection_screen())
+        footer = urwid.Columns([save_button, cancel_button], dividechars=2)
+        body = urwid.ListBox(urwid.SimpleFocusListWalker([
+            urwid.Text(f"Editing {namespace['name']}"),
+            urwid.Divider(),
+            edit_widget,
+            urwid.Divider(),
+            footer
+        ]))
+        self.frame.body = urwid.Frame(body, footer=footer)
+        self.edit_widget = edit_widget
+        self.save_button = save_button
+        self.cancel_button = cancel_button
+        self.current_edit_resource = 'namespace'
+        self.namespace_name = namespace['name']
+        self.editing = True
+
+    def save_namespace(self, button, data):
+        name, edit_widget = data
+        yaml_content = yaml.safe_load(edit_widget.get_edit_text())
+        self.namespace.update_namespace_yaml(name, yaml_content)
+        self.resource_selection_screen()
+        self.show_namespaces(button)
 
     def edit_resource(self, button, resource, get_yaml_func, save_func, resource_type):
         namespace = resource['namespace']

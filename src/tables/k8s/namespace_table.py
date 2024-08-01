@@ -1,14 +1,32 @@
 import urwid
 
-def build_namespace_table(resources):
-    headers = ['Name']
-    table_header = [urwid.Text(header, align='center') for header in headers]
-    table_header = urwid.AttrMap(urwid.Columns([('weight', 1, table_header[0])], dividechars=1), 'line')
+def build_namespace_table(namespaces, edit_callback=None, delete_callback=None):
+    table_header = urwid.Columns([
+        urwid.Text("Namespace Name", align='center'),
+        urwid.Text("Actions", align='center'),
+    ])
 
-    table_rows = [urwid.LineBox(table_header), urwid.Divider()]
-    for resource in resources:
-        row = [urwid.Text(resource['name'], align='center')]
-        table_row = urwid.AttrMap(urwid.Columns([('weight', 1, row[0])], dividechars=1), 'line')
-        table_rows.append(urwid.LineBox(table_row))
+    rows = [table_header, urwid.Divider()]
 
-    return urwid.ListBox(urwid.SimpleFocusListWalker(table_rows))
+    for namespace in namespaces:
+        edit_button = urwid.Button("Edit")
+        if edit_callback:
+            urwid.connect_signal(edit_button, 'click', edit_callback, namespace)
+
+        delete_button = urwid.Button("Delete")
+        if delete_callback:
+            urwid.connect_signal(delete_button, 'click', delete_callback, namespace)
+
+        buttons = urwid.Columns([
+            urwid.AttrMap(edit_button, None, focus_map='reversed'),
+            urwid.AttrMap(delete_button, None, focus_map='reversed')
+        ])
+
+        row = urwid.Columns([
+            urwid.Text(namespace['name'], align='center'),
+            buttons
+        ])
+
+        rows.append(row)
+
+    return urwid.ListBox(urwid.SimpleFocusListWalker(rows))

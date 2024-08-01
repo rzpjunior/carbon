@@ -14,9 +14,12 @@ from src.tables.k8s.ingress_table import build_ingress_table
 from src.tables.k8s.namespace_table import build_namespace_table
 from src.tables.k8s.configmap_table import build_configmap_table
 from src.tables.k8s.secret_table import build_secret_table
-from src.terminal import TerminalWidget
+from src.com.terminal import TerminalWidget
 from src.resources.resource_creator import ResourceCreator
 from src.com.loading import LoadingWidget
+from src.com.main_menu import load_main_menu
+from src.com.config_screen import load_config_screen
+from src.com.sidebar import build_sidebar, get_sidebar_buttons
 
 class CarbonUI:
     def __init__(self):
@@ -51,18 +54,7 @@ class CarbonUI:
         self.loading_widget = LoadingWidget()
 
     def load_main_menu(self):
-        
-        body = urwid.Pile([
-            self.ascii_banner,
-            urwid.Divider(),
-            urwid.Text("Choose your provider:", align='center'),
-            urwid.Divider(),
-            urwid.AttrMap(urwid.Button("DigitalOcean", self.choose_provider, 'digitalocean'), None, focus_map='reversed'),
-            urwid.AttrMap(urwid.Button("AWS", self.choose_provider, 'aws'), None, focus_map='reversed'),
-            urwid.Divider(),
-            urwid.Text("Note: This will set the configuration for kubectl", align='center'),
-        ])
-        self.body = urwid.Filler(body, valign='top')
+        self.body = load_main_menu(self.ascii_banner, self.choose_provider, self.back_to_main)
         self.frame.body = self.body
         self.frame.footer = None
 
@@ -71,17 +63,7 @@ class CarbonUI:
         self.load_config_screen()
 
     def load_config_screen(self):
-        self.config_edit = urwid.Edit(caption="Path: ", edit_text="")
-        body = urwid.Pile([
-            self.ascii_banner,
-            urwid.AttrMap(urwid.Text("Enter path to your YAML configuration", align='center'), 'header'),
-            urwid.Divider(),
-            self.config_edit,
-            urwid.Divider(),
-            urwid.AttrMap(urwid.Button("Load", self.load_config), None, focus_map='reversed'),
-            urwid.AttrMap(urwid.Button("Back", self.back_to_main), None, focus_map='reversed'),
-        ])
-        self.body = urwid.Filler(body, valign='top')
+        self.body, self.config_edit = load_config_screen(self.ascii_banner, self.load_config, self.back_to_main)
         self.frame.body = self.body
         self.frame.footer = None
 
@@ -106,46 +88,11 @@ class CarbonUI:
         os.environ['KUBECONFIG'] = config_path
 
     def build_sidebar(self):
-        menu_content = urwid.Pile([
-            urwid.AttrMap(urwid.Text("Resources", align='center'), 'header'),
-            urwid.Divider(),
-            urwid.Text("Workloads:"),
-            urwid.Divider(),
-            self.create_menu_button("Pods", self.show_pods),
-            self.create_menu_button("Deployments", self.show_deployments),
-            urwid.Divider(),
-            urwid.Text("Network:"),
-            urwid.Divider(),
-            self.create_menu_button("Services", self.show_services),
-            self.create_menu_button("Ingresses", self.show_ingresses),
-            urwid.Divider(),
-            urwid.Text("Config:"),
-            urwid.Divider(),
-            self.create_menu_button("ConfigMaps", self.show_configmaps),
-            self.create_menu_button("Secrets", self.show_secrets),
-            urwid.Divider(),
-            urwid.Text("Other:"),
-            urwid.Divider(),
-            self.create_menu_button("Namespaces", self.show_namespaces),
-            urwid.Divider(),
-            urwid.AttrMap(urwid.Text("Create", align='center'), 'header'),
-            urwid.Divider(),
-            self.create_menu_button("Ingress", self.create_ingress),
-            self.create_menu_button("Deployment", self.create_deployment),
-            self.create_menu_button("Service", self.create_service),
-            self.create_menu_button("Namespace", self.create_namespace),
-            self.create_menu_button("Secret", self.create_secret),
-            self.create_menu_button("ConfigMap", self.create_configmap),
-        ])
-        return urwid.LineBox(menu_content, title="Menu")
-
-    def create_menu_button(self, label, callback):
-        button = urwid.Button(label)
-        urwid.connect_signal(button, 'click', callback)
-        return urwid.AttrMap(button, None, focus_map='reversed')
+        menu_buttons = get_sidebar_buttons(self)
+        self.sidebar = build_sidebar(menu_buttons)
 
     def resource_selection_screen(self):
-        self.sidebar = self.build_sidebar()
+        self.build_sidebar()
         self.body = urwid.Text(".")
         self.columns = urwid.Columns([('fixed', 20, self.sidebar), urwid.Filler(self.body)])
         self.frame.body = self.columns
@@ -164,7 +111,7 @@ class CarbonUI:
 
     def show_namespaces(self, button):
         self.show_resources('namespaces')
-    
+
     def show_configmaps(self, button):
         self.show_resources('configmaps')
 

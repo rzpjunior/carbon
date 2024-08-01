@@ -57,3 +57,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Security
 - None
+
+## [1.1.0] - 2024-08-01
+
+### Added
+- **New Resources**: ConfigMaps and Secrets
+- Can modify ConfigMaps and Secrets
+- Loader on selecting resources
+
+### Changed
+- Adjust dependencies on setup.py
+- Enhanced load config UI
+- Modular component sidebar, loadconfig, and main menu
+- Code refactor on ui.py
+
+### Fixed
+- Various bugs regarding resources loader
+
+### Deprecated
+- None
+
+### Removed
+- None
+
+### Security
+- None

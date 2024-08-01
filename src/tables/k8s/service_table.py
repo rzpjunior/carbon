@@ -1,7 +1,7 @@
 import urwid
 
 def build_service_table(services, edit_callback):
-    headers = ['Name', 'Namespace', 'Type', 'Cluster IP', 'Ports', 'External IP', 'Selector', 'Age', 'Status']
+    headers = ['Name', 'Namespace', 'Type', 'Cluster IP', 'Ports', 'External IP', 'Age', 'Status']
     table_header = [urwid.Text(header, align='center') for header in headers]
     table_header = urwid.AttrMap(urwid.Columns([
         ('weight', 2, table_header[0]), 

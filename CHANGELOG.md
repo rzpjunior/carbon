@@ -77,6 +77,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Deprecated
 - None
 
+## [1.2.0] - 2024-08-02
+
+### Added
+- Now can view pods logs in pods resources table
+- Add actions on pods table
+- Now able to delete namespace
+- Confirmation dialog upon deleting namespace
+
+### Changed
+- Enhanced pods resources table
+- Enhanced namespace resource table
+
+### Fixed
+- Urwid pile max column
+- Urwid ListBox miss match too many values
+- Urwid not able to load urwid.frame with 2 arguments
+- Fixed setup.py installation seperation dependency
+
+### Deprecated
+- None
+
 ### Removed
 - None
 

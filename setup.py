@@ -7,8 +7,8 @@ setup(
     install_requires=[
         "urwid",
         "kubernetes",
-        "PyYAML"
-        "ptyprocess"
+        "PyYAML",
+        "ptyprocess",
         "pyte"
     ],
     entry_points={

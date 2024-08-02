@@ -6,8 +6,11 @@ class Config:
     def __init__(self):
         self.v1 = client.CoreV1Api()
 
-    def list_configmaps(self):
-        configmaps = self.v1.list_config_map_for_all_namespaces()
+    def list_configmaps(self, namespace_filter=None):
+        if namespace_filter:
+            configmaps = self.v1.list_namespaced_config_map(namespace_filter)
+        else:
+            configmaps = self.v1.list_config_map_for_all_namespaces()
         configmap_details = []
         for cm in configmaps.items:
             age = (datetime.utcnow() - cm.metadata.creation_timestamp.replace(tzinfo=None)).days
@@ -29,8 +32,11 @@ class Config:
         configmap_body = client.V1ConfigMap(**yaml_dict)
         self.v1.replace_namespaced_config_map(name, namespace, body=configmap_body)
 
-    def list_secrets(self):
-        secrets = self.v1.list_secret_for_all_namespaces()
+    def list_secrets(self, namespace_filter=None):
+        if namespace_filter:
+            secrets = self.v1.list_namespaced_secret(namespace_filter)
+        else:
+            secrets = self.v1.list_secret_for_all_namespaces()
         secret_details = []
         for secret in secrets.items:
             age = (datetime.utcnow() - secret.metadata.creation_timestamp.replace(tzinfo=None)).days

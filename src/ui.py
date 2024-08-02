@@ -173,24 +173,16 @@ class CarbonUI:
                     resources = self.workloads.list_deployments_detailed(namespace_filter)
                     self.body = build_deployment_table(resources, self.edit_deployment)
                 elif resource_type == 'services':
-                    resources = self.network.list_services()
-                    if namespace_filter:
-                        resources = [r for r in resources if r['namespace'] == namespace_filter]
+                    resources = self.network.list_services(namespace_filter)
                     self.body = build_service_table(resources, self.edit_service)
                 elif resource_type == 'ingresses':
-                    resources = self.network.list_ingresses()
-                    if namespace_filter:
-                        resources = [r for r in resources if r['namespace'] == namespace_filter]
+                    resources = self.network.list_ingresses(namespace_filter)
                     self.body = build_ingress_table(resources, self.edit_ingress)
                 elif resource_type == 'configmaps':
-                    resources = self.config.list_configmaps()
-                    if namespace_filter:
-                        resources = [r for r in resources if r['namespace'] == namespace_filter]
+                    resources = self.config.list_configmaps(namespace_filter)
                     self.body = build_configmap_table(resources, self.edit_configmap)
                 elif resource_type == 'secrets':
-                    resources = self.config.list_secrets()
-                    if namespace_filter:
-                        resources = [r for r in resources if r['namespace'] == namespace_filter]
+                    resources = self.config.list_secrets(namespace_filter)
                     self.body = build_secret_table(resources, self.edit_secret)
                 elif resource_type == 'namespaces':
                     resources = self.namespace.list_namespaces()

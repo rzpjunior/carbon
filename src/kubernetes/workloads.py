@@ -1,4 +1,4 @@
-from kubernetes import client
+from kubernetes import client, config
 from datetime import datetime
 import yaml
 
@@ -33,6 +33,13 @@ class Workloads:
         yaml_dict['kind'] = yaml_dict.pop('kind', None) 
         pod_body = client.V1Pod(**yaml_dict)  
         self.v1.replace_namespaced_pod(name, namespace, body=pod_body)
+
+    def get_pod_logs(self, namespace, pod_name):
+        try:
+            logs = self.v1.read_namespaced_pod_log(name=pod_name, namespace=namespace)
+            return logs
+        except client.exceptions.ApiException as e:
+            return f"Error fetching logs: {e}"
 
     def list_deployments_detailed(self):
         deployments = self.apps_v1.list_deployment_for_all_namespaces()

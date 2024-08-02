@@ -52,6 +52,7 @@ class CarbonUI:
         self.editing = False 
         self.resource_creator = ResourceCreator(self)
         self.loading_widget = LoadingWidget()
+        self.log_viewer = None
 
     def load_main_menu(self):
         self.body = load_main_menu(self.ascii_banner, self.choose_provider, self.back_to_main)
@@ -100,6 +101,21 @@ class CarbonUI:
     def show_pods(self, button):
         self.show_resources('pods')
 
+    def show_pod_logs(self, button, pod):
+        namespace = pod['namespace']
+        pod_name = pod['name']
+        logs = self.workloads.get_pod_logs(namespace, pod_name)
+        log_text = urwid.Text(logs)
+        close_button = urwid.Button("Close", self.close_log_viewer)
+        footer = urwid.AttrMap(close_button, None, focus_map='reversed')
+        log_viewer_frame = urwid.Frame(urwid.Filler(log_text, valign='top'), footer=footer)
+        self.log_viewer = urwid.Overlay(log_viewer_frame, self.frame, 'center', ('relative', 80), 'middle', ('relative', 80))
+        self.loop.widget = self.log_viewer
+
+    def close_log_viewer(self, button):
+        self.loop.widget = self.frame
+        self.log_viewer = None
+
     def show_deployments(self, button):
         self.show_resources('deployments')
 
@@ -141,7 +157,7 @@ class CarbonUI:
             try:
                 if resource_type == 'pods':
                     resources = self.workloads.list_pods_detailed()
-                    self.body = build_pod_table(resources, self.edit_pod)
+                    self.body = build_pod_table(resources, self.edit_pod, self.show_pod_logs)
                 elif resource_type == 'deployments':
                     resources = self.workloads.list_deployments_detailed()
                     self.body = build_deployment_table(resources, self.edit_deployment)
@@ -159,7 +175,7 @@ class CarbonUI:
                     self.body = build_secret_table(resources, self.edit_secret)
                 elif resource_type == 'namespaces':
                     resources = self.namespace.list_namespaces()
-                    self.body = build_namespace_table(resources)
+                    self.body = build_namespace_table(resources, self.edit_namespace, self.show_delete_confirmation)
                 self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
                 self.loading_widget.stop()
             except Exception as e:
@@ -170,6 +186,58 @@ class CarbonUI:
                 self.loop.draw_screen()
         
         self.loop.set_alarm_in(0.1, fetch_resources)
+
+    def show_delete_confirmation(self, button, namespace):
+        confirmation_text = urwid.Text(f"Are you sure you want to delete the namespace '{namespace['name']}'?")
+        yes_button = urwid.Button("Yes", self.delete_namespace, namespace)
+        no_button = urwid.Button("No", self.close_delete_confirmation)
+        buttons = urwid.Columns([urwid.AttrMap(yes_button, None, focus_map='reversed'), urwid.AttrMap(no_button, None, focus_map='reversed')])
+        body = urwid.Pile([confirmation_text, urwid.Divider(), buttons])
+        confirmation_frame = urwid.Frame(urwid.Filler(body, valign='top'))
+        self.loop.widget = urwid.Overlay(confirmation_frame, self.frame, 'center', ('relative', 50), 'middle', ('relative', 50))
+    
+    def close_delete_confirmation(self, button):
+        self.loop.widget = self.frame
+        self.log_viewer = None
+
+    def delete_namespace(self, button, namespace):
+        try:
+            self.namespace.delete_namespace(namespace['name'])
+            self.show_namespaces(button)
+        except Exception as e:
+            error_text = urwid.Text(('failed', f"Error deleting namespace: {str(e)}"))
+            self.body.body.append(error_text)
+            self.loop.draw_screen()
+        self.loop.widget = self.frame
+
+    def edit_namespace(self, button, namespace):
+        yaml_content = self.namespace.get_namespace_yaml(namespace['name'])
+        formatted_yaml = yaml.safe_dump(yaml_content, default_flow_style=False)
+        edit_widget = urwid.Edit(edit_text=formatted_yaml, multiline=True)
+        save_button = urwid.Button("Save", self.save_namespace, (namespace['name'], edit_widget))
+        cancel_button = urwid.Button("Cancel", lambda button: self.resource_selection_screen())
+        footer = urwid.Columns([save_button, cancel_button], dividechars=2)
+        body = urwid.ListBox(urwid.SimpleFocusListWalker([
+            urwid.Text(f"Editing {namespace['name']}"),
+            urwid.Divider(),
+            edit_widget,
+            urwid.Divider(),
+            footer
+        ]))
+        self.frame.body = urwid.Frame(body, footer=footer)
+        self.edit_widget = edit_widget
+        self.save_button = save_button
+        self.cancel_button = cancel_button
+        self.current_edit_resource = 'namespace'
+        self.namespace_name = namespace['name']
+        self.editing = True
+
+    def save_namespace(self, button, data):
+        name, edit_widget = data
+        yaml_content = yaml.safe_load(edit_widget.get_edit_text())
+        self.namespace.update_namespace_yaml(name, yaml_content)
+        self.resource_selection_screen()
+        self.show_namespaces(button)
 
     def edit_resource(self, button, resource, get_yaml_func, save_func, resource_type):
         namespace = resource['namespace']

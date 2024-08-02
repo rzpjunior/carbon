@@ -37,12 +37,11 @@ class CarbonUI:
         """, align='center')
         self.header = urwid.AttrMap(urwid.Text("CARBON - Simple Kubernetes GUI-based Terminal", align='center'), 'header')
         self.body = urwid.Text("Please select a provider to get started.")
-        self.namespace_filter = urwid.Edit("Namespace Filter: ")
         self.terminal = TerminalWidget()
-        self.footer = urwid.Pile([urwid.AttrMap(self.namespace_filter, 'header'), self.terminal])
-        self.frame = urwid.Frame(header=self.header, body=self.body, footer=self.footer)
+        self.frame = urwid.Frame(header=self.header, body=self.body, footer=None)
         self.loop = urwid.MainLoop(self.frame, unhandled_input=self.handle_input, palette=[
             ('header', 'black', 'light gray', 'standout'),
+            ('footer', 'black', 'light gray', 'standout'),
             ('reversed', 'standout', ''),
             ('running', 'dark green', ''),
             ('pending', 'yellow', ''),
@@ -55,6 +54,13 @@ class CarbonUI:
         self.resource_creator = ResourceCreator(self)
         self.loading_widget = LoadingWidget()
         self.log_viewer = None
+
+    def create_footer(self):
+        self.namespace_filter = urwid.Edit("Namespace: ")
+        footer = urwid.Columns([
+            urwid.AttrMap(self.namespace_filter, 'footer')
+        ], dividechars=2)
+        return footer
 
     def load_main_menu(self):
         self.body = load_main_menu(self.ascii_banner, self.choose_provider, self.back_to_main)
@@ -81,7 +87,7 @@ class CarbonUI:
             self.namespace = Namespace()
             self.config = Config()
             self.resource_selection_screen()
-            self.frame.footer = self.create_footer()
+            self.frame.footer = urwid.Pile([self.create_footer(), self.terminal])
         except Exception as e:
             error_text = urwid.Text(('failed', f"Error loading configuration: {str(e)}"))
             self.body.body.append(error_text)
@@ -100,7 +106,6 @@ class CarbonUI:
         self.columns = urwid.Columns([('fixed', 20, self.sidebar), urwid.Filler(self.body)])
         self.frame.body = self.columns
         self.frame.footer = urwid.Pile([self.create_footer(), self.terminal])
-
 
     def show_pods(self, button):
         self.show_resources('pods')
@@ -146,16 +151,6 @@ class CarbonUI:
         self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
         self.loading_widget.start(self.loop)
         self.loop.draw_screen()
-
-    def create_footer(self):
-        self.namespace_filter = urwid.Edit("Namespace: ")
-        footer = urwid.Columns([
-            self.namespace_filter
-        ], dividechars=2)
-        return footer
-
-    def apply_namespace_filter(self, button):
-        self.show_resources(self.current_resource_type)
 
     def show_resources(self, resource_type):
         self.current_resource_type = resource_type
@@ -219,7 +214,7 @@ class CarbonUI:
         body = urwid.Pile([confirmation_text, urwid.Divider(), buttons])
         confirmation_frame = urwid.Frame(urwid.Filler(body, valign='top'))
         self.loop.widget = urwid.Overlay(confirmation_frame, self.frame, 'center', ('relative', 50), 'middle', ('relative', 50))
-    
+
     def close_delete_confirmation(self, button):
         self.loop.widget = self.frame
         self.log_viewer = None
@@ -337,7 +332,7 @@ class CarbonUI:
 
     def save_deployment(self, button, data):
         self.save_resource(button, data, self.workloads.update_deployment_yaml, self.show_deployments)
-    
+
     def edit_configmap(self, button, configmap):
         self.edit_resource(button, configmap, self.config.get_configmap_yaml, self.save_configmap, 'configmap')
 
@@ -389,7 +384,6 @@ class CarbonUI:
 
             if key == 'enter' and hasattr(self, 'current_resource_type'):
                 self.show_resources(self.current_resource_type)
-
 
     def run(self):
         self.load_main_menu()

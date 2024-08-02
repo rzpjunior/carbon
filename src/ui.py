@@ -175,7 +175,7 @@ class CarbonUI:
                     self.body = build_secret_table(resources, self.edit_secret)
                 elif resource_type == 'namespaces':
                     resources = self.namespace.list_namespaces()
-                    self.body = build_namespace_table(resources, self.edit_namespace, self.delete_namespace)
+                    self.body = build_namespace_table(resources, self.edit_namespace, self.show_delete_confirmation)
                 self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
                 self.loading_widget.stop()
             except Exception as e:
@@ -187,6 +187,19 @@ class CarbonUI:
         
         self.loop.set_alarm_in(0.1, fetch_resources)
 
+    def show_delete_confirmation(self, button, namespace):
+        confirmation_text = urwid.Text(f"Are you sure you want to delete the namespace '{namespace['name']}'?")
+        yes_button = urwid.Button("Yes", self.delete_namespace, namespace)
+        no_button = urwid.Button("No", self.close_delete_confirmation)
+        buttons = urwid.Columns([urwid.AttrMap(yes_button, None, focus_map='reversed'), urwid.AttrMap(no_button, None, focus_map='reversed')])
+        body = urwid.Pile([confirmation_text, urwid.Divider(), buttons])
+        confirmation_frame = urwid.Frame(urwid.Filler(body, valign='top'))
+        self.loop.widget = urwid.Overlay(confirmation_frame, self.frame, 'center', ('relative', 50), 'middle', ('relative', 50))
+    
+    def close_delete_confirmation(self, button):
+        self.loop.widget = self.frame
+        self.log_viewer = None
+
     def delete_namespace(self, button, namespace):
         try:
             self.namespace.delete_namespace(namespace['name'])
@@ -195,6 +208,7 @@ class CarbonUI:
             error_text = urwid.Text(('failed', f"Error deleting namespace: {str(e)}"))
             self.body.body.append(error_text)
             self.loop.draw_screen()
+        self.loop.widget = self.frame
 
     def edit_namespace(self, button, namespace):
         yaml_content = self.namespace.get_namespace_yaml(namespace['name'])

@@ -52,6 +52,7 @@ class CarbonUI:
         self.editing = False 
         self.resource_creator = ResourceCreator(self)
         self.loading_widget = LoadingWidget()
+        self.log_viewer = None
 
     def load_main_menu(self):
         self.body = load_main_menu(self.ascii_banner, self.choose_provider, self.back_to_main)
@@ -100,6 +101,21 @@ class CarbonUI:
     def show_pods(self, button):
         self.show_resources('pods')
 
+    def show_pod_logs(self, button, pod):
+        namespace = pod['namespace']
+        pod_name = pod['name']
+        logs = self.workloads.get_pod_logs(namespace, pod_name)
+        log_text = urwid.Text(logs)
+        close_button = urwid.Button("Close", self.close_log_viewer)
+        footer = urwid.AttrMap(close_button, None, focus_map='reversed')
+        log_viewer_frame = urwid.Frame(urwid.Filler(log_text, valign='top'), footer=footer)
+        self.log_viewer = urwid.Overlay(log_viewer_frame, self.frame, 'center', ('relative', 80), 'middle', ('relative', 80))
+        self.loop.widget = self.log_viewer
+
+    def close_log_viewer(self, button):
+        self.loop.widget = self.frame
+        self.log_viewer = None
+
     def show_deployments(self, button):
         self.show_resources('deployments')
 
@@ -141,7 +157,7 @@ class CarbonUI:
             try:
                 if resource_type == 'pods':
                     resources = self.workloads.list_pods_detailed()
-                    self.body = build_pod_table(resources, self.edit_pod)
+                    self.body = build_pod_table(resources, self.edit_pod, self.show_pod_logs)
                 elif resource_type == 'deployments':
                     resources = self.workloads.list_deployments_detailed()
                     self.body = build_deployment_table(resources, self.edit_deployment)

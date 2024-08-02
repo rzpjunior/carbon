@@ -7,8 +7,11 @@ class Network:
         self.v1 = client.CoreV1Api()
         self.networking_v1 = client.NetworkingV1Api()
 
-    def list_services(self):
-        services = self.v1.list_service_for_all_namespaces()
+    def list_services(self, namespace_filter=None):
+        if namespace_filter:
+            services = self.v1.list_namespaced_service(namespace_filter)
+        else:
+            services = self.v1.list_service_for_all_namespaces()
         service_details = []
         for svc in services.items:
             ports = ', '.join([f"{port.port}:{port.target_port}/{port.protocol}" for port in svc.spec.ports])
@@ -28,8 +31,11 @@ class Network:
             })
         return service_details
 
-    def list_ingresses(self):
-        ingresses = self.networking_v1.list_ingress_for_all_namespaces()
+    def list_ingresses(self, namespace_filter=None):
+        if namespace_filter:
+            ingresses = self.networking_v1.list_namespaced_ingress(namespace_filter)
+        else:
+            ingresses = self.networking_v1.list_ingress_for_all_namespaces()
         ingress_details = []
         for ing in ingresses.items:
             load_balancers = ', '.join([ingress.ip for ingress in (ing.status.load_balancer.ingress or []) if ingress.ip]) or '-'

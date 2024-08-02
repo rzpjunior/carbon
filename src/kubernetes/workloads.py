@@ -7,8 +7,12 @@ class Workloads:
         self.v1 = client.CoreV1Api()
         self.apps_v1 = client.AppsV1Api()
 
-    def list_pods_detailed(self):
-        pods = self.v1.list_pod_for_all_namespaces(watch=False)
+    def list_pods_detailed(self, namespace=None):
+        if namespace:
+            pods = self.v1.list_namespaced_pod(namespace, watch=False)
+        else:
+            pods = self.v1.list_pod_for_all_namespaces(watch=False)
+
         pod_details = []
         for pod in pods.items:
             status = pod.status.phase
@@ -41,8 +45,12 @@ class Workloads:
         except client.exceptions.ApiException as e:
             return f"Error fetching logs: {e}"
 
-    def list_deployments_detailed(self):
-        deployments = self.apps_v1.list_deployment_for_all_namespaces()
+    def list_deployments_detailed(self, namespace=None):
+        if namespace:
+            deployments = self.apps_v1.list_namespaced_deployment(namespace)
+        else:
+            deployments = self.apps_v1.list_deployment_for_all_namespaces()
+
         deployment_details = []
         for dep in deployments.items:
             conditions = ', '.join([cond.type for cond in dep.status.conditions if cond.status == "True"])

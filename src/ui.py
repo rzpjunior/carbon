@@ -37,8 +37,10 @@ class CarbonUI:
         """, align='center')
         self.header = urwid.AttrMap(urwid.Text("CARBON - Simple Kubernetes GUI-based Terminal", align='center'), 'header')
         self.body = urwid.Text("Please select a provider to get started.")
+        self.namespace_filter = urwid.Edit("Namespace Filter: ")
         self.terminal = TerminalWidget()
-        self.frame = urwid.Frame(header=self.header, body=self.body, footer=None)
+        self.footer = urwid.Pile([urwid.AttrMap(self.namespace_filter, 'header'), self.terminal])
+        self.frame = urwid.Frame(header=self.header, body=self.body, footer=self.footer)
         self.loop = urwid.MainLoop(self.frame, unhandled_input=self.handle_input, palette=[
             ('header', 'black', 'light gray', 'standout'),
             ('reversed', 'standout', ''),
@@ -79,7 +81,7 @@ class CarbonUI:
             self.namespace = Namespace()
             self.config = Config()
             self.resource_selection_screen()
-            self.frame.footer = self.terminal
+            self.frame.footer = self.footer
         except Exception as e:
             error_text = urwid.Text(('failed', f"Error loading configuration: {str(e)}"))
             self.body.body.append(error_text)
@@ -155,23 +157,36 @@ class CarbonUI:
         
         def fetch_resources(loop, user_data):
             try:
+                namespace_filter = self.namespace_filter.get_edit_text().strip()
                 if resource_type == 'pods':
                     resources = self.workloads.list_pods_detailed()
+                    if namespace_filter:
+                        resources = [r for r in resources if r['namespace'] == namespace_filter]
                     self.body = build_pod_table(resources, self.edit_pod, self.show_pod_logs)
                 elif resource_type == 'deployments':
                     resources = self.workloads.list_deployments_detailed()
+                    if namespace_filter:
+                        resources = [r for r in resources if r['namespace'] == namespace_filter]
                     self.body = build_deployment_table(resources, self.edit_deployment)
                 elif resource_type == 'services':
                     resources = self.network.list_services()
+                    if namespace_filter:
+                        resources = [r for r in resources if r['namespace'] == namespace_filter]
                     self.body = build_service_table(resources, self.edit_service)
                 elif resource_type == 'ingresses':
                     resources = self.network.list_ingresses()
+                    if namespace_filter:
+                        resources = [r for r in resources if r['namespace'] == namespace_filter]
                     self.body = build_ingress_table(resources, self.edit_ingress)
                 elif resource_type == 'configmaps':
                     resources = self.config.list_configmaps()
+                    if namespace_filter:
+                        resources = [r for r in resources if r['namespace'] == namespace_filter]
                     self.body = build_configmap_table(resources, self.edit_configmap)
                 elif resource_type == 'secrets':
                     resources = self.config.list_secrets()
+                    if namespace_filter:
+                        resources = [r for r in resources if r['namespace'] == namespace_filter]
                     self.body = build_secret_table(resources, self.edit_secret)
                 elif resource_type == 'namespaces':
                     resources = self.namespace.list_namespaces()

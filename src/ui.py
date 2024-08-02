@@ -81,7 +81,7 @@ class CarbonUI:
             self.namespace = Namespace()
             self.config = Config()
             self.resource_selection_screen()
-            self.frame.footer = self.footer
+            self.frame.footer = self.create_footer()
         except Exception as e:
             error_text = urwid.Text(('failed', f"Error loading configuration: {str(e)}"))
             self.body.body.append(error_text)
@@ -99,6 +99,8 @@ class CarbonUI:
         self.body = urwid.Text(".")
         self.columns = urwid.Columns([('fixed', 20, self.sidebar), urwid.Filler(self.body)])
         self.frame.body = self.columns
+        self.frame.footer = urwid.Pile([self.create_footer(), self.terminal])
+
 
     def show_pods(self, button):
         self.show_resources('pods')
@@ -145,7 +147,18 @@ class CarbonUI:
         self.loading_widget.start(self.loop)
         self.loop.draw_screen()
 
+    def create_footer(self):
+        self.namespace_filter = urwid.Edit("Namespace: ")
+        footer = urwid.Columns([
+            self.namespace_filter
+        ], dividechars=2)
+        return footer
+
+    def apply_namespace_filter(self, button):
+        self.show_resources(self.current_resource_type)
+
     def show_resources(self, resource_type):
+        self.current_resource_type = resource_type
         if not self.config_loaded:
             error_text = urwid.Text(('failed', "Configuration not loaded. Please load your configuration first."))
             self.body = urwid.ListBox(urwid.SimpleFocusListWalker([error_text]))
@@ -154,19 +167,15 @@ class CarbonUI:
             return
 
         self.show_loading()
-        
+
         def fetch_resources(loop, user_data):
             try:
                 namespace_filter = self.namespace_filter.get_edit_text().strip()
                 if resource_type == 'pods':
-                    resources = self.workloads.list_pods_detailed()
-                    if namespace_filter:
-                        resources = [r for r in resources if r['namespace'] == namespace_filter]
+                    resources = self.workloads.list_pods_detailed(namespace_filter)
                     self.body = build_pod_table(resources, self.edit_pod, self.show_pod_logs)
                 elif resource_type == 'deployments':
-                    resources = self.workloads.list_deployments_detailed()
-                    if namespace_filter:
-                        resources = [r for r in resources if r['namespace'] == namespace_filter]
+                    resources = self.workloads.list_deployments_detailed(namespace_filter)
                     self.body = build_deployment_table(resources, self.edit_deployment)
                 elif resource_type == 'services':
                     resources = self.network.list_services()
@@ -199,7 +208,7 @@ class CarbonUI:
                 self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
                 self.loading_widget.stop()
                 self.loop.draw_screen()
-        
+
         self.loop.set_alarm_in(0.1, fetch_resources)
 
     def show_delete_confirmation(self, button, namespace):
@@ -375,8 +384,12 @@ class CarbonUI:
             if hasattr(self, 'edit_widget'):
                 self.edit_widget.keypress((80,), key)
 
-        if self.terminal:
-            self.terminal.keypress((80,), key)
+            if self.terminal:
+                self.terminal.keypress((80,), key)
+
+            if key == 'enter' and hasattr(self, 'current_resource_type'):
+                self.show_resources(self.current_resource_type)
+
 
     def run(self):
         self.load_main_menu()

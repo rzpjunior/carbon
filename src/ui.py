@@ -41,6 +41,7 @@ class CarbonUI:
         self.frame = urwid.Frame(header=self.header, body=self.body, footer=None)
         self.loop = urwid.MainLoop(self.frame, unhandled_input=self.handle_input, palette=[
             ('header', 'black', 'light gray', 'standout'),
+            ('footer', 'black', 'light gray', 'standout'),
             ('reversed', 'standout', ''),
             ('running', 'dark green', ''),
             ('pending', 'yellow', ''),
@@ -53,6 +54,13 @@ class CarbonUI:
         self.resource_creator = ResourceCreator(self)
         self.loading_widget = LoadingWidget()
         self.log_viewer = None
+
+    def create_footer(self):
+        self.namespace_filter = urwid.Edit("Namespace: ")
+        footer = urwid.Columns([
+            urwid.AttrMap(self.namespace_filter, 'footer')
+        ], dividechars=2)
+        return footer
 
     def load_main_menu(self):
         self.body = load_main_menu(self.ascii_banner, self.choose_provider, self.back_to_main)
@@ -79,7 +87,7 @@ class CarbonUI:
             self.namespace = Namespace()
             self.config = Config()
             self.resource_selection_screen()
-            self.frame.footer = self.terminal
+            self.frame.footer = urwid.Pile([self.create_footer(), self.terminal])
         except Exception as e:
             error_text = urwid.Text(('failed', f"Error loading configuration: {str(e)}"))
             self.body.body.append(error_text)
@@ -97,6 +105,7 @@ class CarbonUI:
         self.body = urwid.Text(".")
         self.columns = urwid.Columns([('fixed', 20, self.sidebar), urwid.Filler(self.body)])
         self.frame.body = self.columns
+        self.frame.footer = urwid.Pile([self.create_footer(), self.terminal])
 
     def show_pods(self, button):
         self.show_resources('pods')
@@ -144,6 +153,7 @@ class CarbonUI:
         self.loop.draw_screen()
 
     def show_resources(self, resource_type):
+        self.current_resource_type = resource_type
         if not self.config_loaded:
             error_text = urwid.Text(('failed', "Configuration not loaded. Please load your configuration first."))
             self.body = urwid.ListBox(urwid.SimpleFocusListWalker([error_text]))
@@ -152,26 +162,27 @@ class CarbonUI:
             return
 
         self.show_loading()
-        
+
         def fetch_resources(loop, user_data):
             try:
+                namespace_filter = self.namespace_filter.get_edit_text().strip()
                 if resource_type == 'pods':
-                    resources = self.workloads.list_pods_detailed()
+                    resources = self.workloads.list_pods_detailed(namespace_filter)
                     self.body = build_pod_table(resources, self.edit_pod, self.show_pod_logs)
                 elif resource_type == 'deployments':
-                    resources = self.workloads.list_deployments_detailed()
+                    resources = self.workloads.list_deployments_detailed(namespace_filter)
                     self.body = build_deployment_table(resources, self.edit_deployment)
                 elif resource_type == 'services':
-                    resources = self.network.list_services()
+                    resources = self.network.list_services(namespace_filter)
                     self.body = build_service_table(resources, self.edit_service)
                 elif resource_type == 'ingresses':
-                    resources = self.network.list_ingresses()
+                    resources = self.network.list_ingresses(namespace_filter)
                     self.body = build_ingress_table(resources, self.edit_ingress)
                 elif resource_type == 'configmaps':
-                    resources = self.config.list_configmaps()
+                    resources = self.config.list_configmaps(namespace_filter)
                     self.body = build_configmap_table(resources, self.edit_configmap)
                 elif resource_type == 'secrets':
-                    resources = self.config.list_secrets()
+                    resources = self.config.list_secrets(namespace_filter)
                     self.body = build_secret_table(resources, self.edit_secret)
                 elif resource_type == 'namespaces':
                     resources = self.namespace.list_namespaces()
@@ -184,7 +195,7 @@ class CarbonUI:
                 self.columns.contents[1] = (self.body, self.columns.options('weight', 1))
                 self.loading_widget.stop()
                 self.loop.draw_screen()
-        
+
         self.loop.set_alarm_in(0.1, fetch_resources)
 
     def show_delete_confirmation(self, button, namespace):
@@ -195,7 +206,7 @@ class CarbonUI:
         body = urwid.Pile([confirmation_text, urwid.Divider(), buttons])
         confirmation_frame = urwid.Frame(urwid.Filler(body, valign='top'))
         self.loop.widget = urwid.Overlay(confirmation_frame, self.frame, 'center', ('relative', 50), 'middle', ('relative', 50))
-    
+
     def close_delete_confirmation(self, button):
         self.loop.widget = self.frame
         self.log_viewer = None
@@ -313,7 +324,7 @@ class CarbonUI:
 
     def save_deployment(self, button, data):
         self.save_resource(button, data, self.workloads.update_deployment_yaml, self.show_deployments)
-    
+
     def edit_configmap(self, button, configmap):
         self.edit_resource(button, configmap, self.config.get_configmap_yaml, self.save_configmap, 'configmap')
 
@@ -360,8 +371,11 @@ class CarbonUI:
             if hasattr(self, 'edit_widget'):
                 self.edit_widget.keypress((80,), key)
 
-        if self.terminal:
-            self.terminal.keypress((80,), key)
+            if self.terminal:
+                self.terminal.keypress((80,), key)
+
+            if key == 'enter' and hasattr(self, 'current_resource_type'):
+                self.show_resources(self.current_resource_type)
 
     def run(self):
         self.load_main_menu()
